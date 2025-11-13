@@ -8,8 +8,3 @@ name = "Dihedral"
 [[lean_exe]]
 name = "dihedral"
 root = "Main"
-
-[[require]]
-name = "mathlib"
-scope = "leanprover-community"
-rev = "v4.24.0"
