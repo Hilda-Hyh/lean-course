@@ -275,7 +275,7 @@ lemma reducedWord_correct (g : D∞) : cs.wordProd (reducedWord g) = g := by
     | zero =>
       simp only [alternating, wordProd_nil, CharP.cast_eq_zero, r_zero, neg_zero, and_self]
     | succ n ih =>
-      simp [alternating, Fin.isValue, Nat.cast_add, Nat.cast_one, neg_add_rev, Int.reduceNeg]
+      simp only [Fin.isValue, Nat.cast_add, Nat.cast_one, neg_add_rev, Int.reduceNeg]
       sorry
       --rw [ih.1, ih.2]
 
@@ -286,7 +286,10 @@ lemma reducedWord_correct (g : D∞) : cs.wordProd (reducedWord g) = g := by
     specialize h_even n
     simp only [alternating, Fin.isValue, ↓reduceIte, cs.wordProd_cons, h_even, one_ne_zero]
     constructor
-    · sorry
+    · have hs : cs.simple 0 = s0 := rfl
+
+      simp [hs]
+      sorry
     · sorry
 
   cases g with
@@ -309,9 +312,7 @@ lemma reducedWord_correct (g : D∞) : cs.wordProd (reducedWord g) = g := by
       let n := k.natAbs - 1
       have hn : k.natAbs = n + 1 := (Nat.succ_pred_eq_of_pos h_pos).symm
       rw [hn, Nat.mul_add]
-      simp [h_odd n]
-      congr
-      simp [n]
+      simp only [n, Fin.isValue, mul_one, Nat.add_one_sub_one, h_odd n, sr.injEq]
       norm_cast
       rw [Nat.sub_add_cancel (by sorry)]
       push_cast
@@ -326,20 +327,21 @@ theorem length_eq (g : D∞) :
   have h_prod : cs.wordProd (reducedWord g) = g := reducedWord_correct g
   rw [← h_prod]
   let L := reducedWord g
+  generalize hL : reducedWord g = L
   have h_chain : List.IsChain (· ≠ ·) L := by
     sorry
   induction L with
   | nil =>
-    rw [show reducedWord g = [] by sorry]
     simp only [wordProd_nil, length_one]
     rfl
   | cons head tail ih =>
-    exact ih
+    simp_all [wordProd_cons]
+    sorry
 
 
 lemma reducedWord_is_reduced (g : D∞) : cs.IsReduced (reducedWord g) := by
   --   reducedWord g 是一个满足 (· ≠ ·) 链的列表。
-  have h_chain_fin : List.IsChain (· ≠ ·) (reducedWord g) := by
+  have h_chain : List.IsChain (· ≠ ·) (reducedWord g) := by
     cases g with
     | r k =>
       dsimp only [reducedWord]
@@ -448,7 +450,6 @@ theorem length_root_reflection (α : Root) :
 abbrev Vertex := D∞
 
 --顶点 u 和 v 之间存在边，且度为 α。
-
 def IsEdge (u v : Vertex) (α : Root) : Prop :=
   v = u * (s_α α)
 
@@ -458,10 +459,25 @@ theorem edge_exists_iff (u v : Vertex) :
     (∃ α, u —[α]→ v) ↔ ∃ α : Root, v = u * s_α α := by
   simp [IsEdge]
 
---若α = (1, 0) 展示 s0 是从 1 到 s0 的边，其度为 (1, 0)
+--s0 是从 1 到 s0 的边，其度为 (1, 0)
 example : (1 : D∞) —[α0]→ (cs.simple 0) := by
   dsimp [IsEdge]
   rw [one_mul]
-  sorry
+  have hα : s_α α0 = s0 := by
+    simp [α0, s_α, alternating, listToGroup, f]
+  have hs : cs.simple 0 = s0 := rfl
+  simp [hα, hs]
+
+inductive le (u v : D∞) := _
+
+instance : PartialOrder D∞ where
+  le := _
+  lt := _
+  le_refl := _
+  le_trans := _
+  lt_iff_le_not_ge := _
+  le_antisymm := _
 
 end GraphStructure
+
+#synth PartialOrder  (DihedralGroup 0)
