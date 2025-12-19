@@ -267,7 +267,7 @@ def listToGroup (l : List (Fin 2)) : D∞ :=
 open CoxeterSystem
 
 lemma reducedWord_correct (g : D∞) : cs.wordProd (reducedWord g) = g := by
-  -- 辅助引理：计算偶数长度交替列表的乘积
+  -- 计算偶数长度交替列表的乘积
   have h_even : ∀ n : ℕ, cs.wordProd (alternating 0 (2 * n)) = r (n : ℤ) ∧
                          cs.wordProd (alternating 1 (2 * n)) = r (-(n : ℤ)) := by
     intro n
@@ -280,7 +280,6 @@ lemma reducedWord_correct (g : D∞) : cs.wordProd (reducedWord g) = g := by
       --rw [ih.1, ih.2]
 
 
-  -- 辅助引理：计算奇数长度交替列表的乘积
   have h_odd : ∀ n : ℕ, cs.wordProd (alternating 0 (2 * n + 1)) = sr (-(n : ℤ)) ∧
                         cs.wordProd (alternating 1 (2 * n + 1)) = sr (n + 1 : ℤ) := by
     intro n
@@ -296,15 +295,14 @@ lemma reducedWord_correct (g : D∞) : cs.wordProd (reducedWord g) = g := by
     split_ifs with h
     · -- k >= 0
       simp [h_even k.natAbs]
-      congr--ZMod上的abs
+      --ZMod上的abs
       sorry
     · -- k < 0
       simp [h_even k.natAbs]
-      congr
       simp only [not_le] at h
       sorry
   | sr k =>
-    simp [reducedWord]
+    simp only [reducedWord, gt_iff_lt, Fin.isValue]
     split_ifs with h
     · -- k > 0
       have h_pos : 0 < k.natAbs := by exact Int.natAbs_pos.mpr (ne_of_gt h)
@@ -320,9 +318,23 @@ lemma reducedWord_correct (g : D∞) : cs.wordProd (reducedWord g) = g := by
       sorry
     · -- k <= 0
       simp [h_odd k.natAbs]
-      congr
       simp only [ not_lt] at h
       sorry
+
+theorem length_eq (g : D∞) :
+    cs.length g = (reducedWord g).length := by
+  have h_prod : cs.wordProd (reducedWord g) = g := reducedWord_correct g
+  rw [← h_prod]
+  let L := reducedWord g
+  have h_chain : List.IsChain (· ≠ ·) L := by
+    sorry
+  induction L with
+  | nil =>
+    rw [show reducedWord g = [] by sorry]
+    simp only [wordProd_nil, length_one]
+    rfl
+  | cons head tail ih =>
+    exact ih
 
 
 lemma reducedWord_is_reduced (g : D∞) : cs.IsReduced (reducedWord g) := by
@@ -335,42 +347,9 @@ lemma reducedWord_is_reduced (g : D∞) : cs.IsReduced (reducedWord g) := by
     | sr k =>
       dsimp only [reducedWord]
       split <;> (apply alternating_chain)
-
-
-  sorry
-
-theorem length_eq (g : D∞) :
-    cs.length g = (reducedWord g).length := by
-  rw [← reducedWord_correct g]
-  let L := reducedWord g
-  have h_chain : List.IsChain (· ≠ ·) L := sorry
-  --simp [reducedWord, listToGroup, List.map]
-  apply le_antisymm
-  ·
-    have : (L.map f).prod = (L.map (cs.simple)).prod := by
-      sorry
-
-    sorry
-
-  ·
-    revert h_chain
-    --obtain ⟨h_head, h_tail_chain⟩ := List.isChain_cons.mp h_chain
-    induction L with
-    | nil =>
-      intro h
-      have : reducedWord g = [] := by
-
-        sorry
-      rw [this]
-
-      exact List.getElem?_eq_none_iff.mp rfl
-
-
-    | cons head tail ih =>
-      intro h_chain
-      obtain ⟨h_head, h_tail_chain⟩ := List.isChain_cons.mp h_chain
-      specialize ih h_tail_chain
-      exact ih
+  unfold CoxeterSystem.IsReduced
+  rw [reducedWord_correct g]
+  exact length_eq g
 
 open Nat
 
@@ -483,7 +462,6 @@ theorem edge_exists_iff (u v : Vertex) :
 example : (1 : D∞) —[α0]→ (cs.simple 0) := by
   dsimp [IsEdge]
   rw [one_mul]
-  -- 这里需要证明 s_α α0 = cs.simple 0，这在 s_α 的定义中应成立
   sorry
 
 end GraphStructure
