@@ -88,6 +88,9 @@ lemma f_is_liftable : M.IsLiftable f := by
   <;>simp
   <;>rfl
 
+lemma fi_inv (i : Fin 2) : (f i)⁻¹ = f i := by
+  exact inv_eq_of_mul_eq_one_left (f_sq_one i)
+
 def φ : M.Group →* DihedralGroup 0 := (M.toCoxeterSystem).lift ⟨f, f_is_liftable⟩
 
 def s0m := M.simple (0 : Fin 2)
@@ -110,7 +113,6 @@ lemma conj_eq_inv {z : ℤ} : s0m * (s0m * s1m)^ z * s0m =( (s0m * s1m)⁻¹)^ z
           exact inv_eq_of_mul_eq_one_left ss1
         · symm
           exact inv_eq_of_mul_eq_one_left ss0
-
   induction z using Int.induction_on with
   | zero =>
       simp only [zpow_zero, mul_one]
@@ -121,7 +123,8 @@ lemma conj_eq_inv {z : ℤ} : s0m * (s0m * s1m)^ z * s0m =( (s0m * s1m)⁻¹)^ z
     _ = s0m * (s0m * s1m) ^ n *(s0m * s0m) * (s0m * s1m) * s0m := by
       rw [show s0m *s0m = 1 by exact ss0, mul_one]
     _ = (s0m * (s0m * s1m) ^ n *s0m) * (s0m * (s0m * s1m) * s0m) := by group
-    _ = (s0m * s1m)⁻¹ ^ (n + 1) := by simp [h1, zpow_natCast] at ih ⊢;rw [ih, pow_succ]
+    _ = (s0m * s1m)⁻¹ ^ (n + 1) := by
+      simp only [zpow_natCast, mul_inv_rev, h1] at ih ⊢;rw [ih, pow_succ]
   | pred n ih =>
     calc s0m * (s0m * s1m) ^ (-(n : ℤ)- 1) * s0m
     _ = s0m * (s0m * s1m) ^ (-(n : ℤ)) * (s0m * s1m)⁻¹ * s0m := by rw [zpow_sub];group
@@ -191,14 +194,14 @@ noncomputable def mulEquiv : D∞ ≃* M.Group where
       have hφ := (M.toCoxeterSystem).lift_apply_simple (f_is_liftable) i
       fin_cases i
       all_goals
-        dsimp [ψ]; simp_all
+        dsimp [ψ]; simp_all only [Fin.zero_eta, Fin.isValue, CoxeterMatrix.toCoxeterSystem_simple]
       · rfl
       · dsimp [φ] at *
         rw [hφ, f, s1]
         simp only [dvd_refl, ZMod.cast_one, zpow_one, Fin.isValue]
         group
         change M.simple 0 ^2 * M.simple 1 = M.simple 1
-        simp
+        simp only [Fin.isValue, mul_eq_right]
         exact (M.toCoxeterSystem).simple_sq (0 : Fin 2)
     intro g
     exact congrArg (fun m => m.toFun g) h
@@ -258,7 +261,6 @@ def reducedWord (g : D∞) : List (Fin 2) :=
         alternating 1 (2 * k_int.natAbs - 1)
       else
         alternating 0 (2 * k_int.natAbs + 1)
-
   --l.map M.toCoxeterSystem.simple
 
 def listToGroup (l : List (Fin 2)) : D∞ :=
@@ -266,61 +268,202 @@ def listToGroup (l : List (Fin 2)) : D∞ :=
 
 open CoxeterSystem
 
+lemma alternating_add_two (s : Fin 2) (n : ℕ) :
+    alternating s (n + 2) = s :: (if s = 0 then 1 else 0) :: alternating s n := by
+  simp only [alternating, Fin.isValue, ite_eq_right_iff, one_ne_zero, imp_false, ite_not,
+    cons.injEq, true_and]
+  split_ifs with h
+  · rw [h]
+  · have := Fin.eq_one_of_ne_zero s h
+    rw [this]
+
+
+lemma h_s0s1 : f 0 * f 1 = r (1 : ℤ) := by
+  simp [f, s0, s1, sr_mul_sr]
+
+lemma alternating_prod_even (n : ℕ) (s : Fin 2) :
+    listToGroup (alternating s (2 * n)) = if s = 0 then r (n : ℤ) else r (-(n : ℤ)) := by
+  induction n generalizing s with
+  | zero =>
+      simp [alternating, listToGroup]
+  | succ n ih =>
+      rw [Nat.mul_succ, alternating_add_two]
+      simp only [listToGroup, Fin.isValue, map_cons, prod_cons, Nat.cast_add, Nat.cast_one,
+        neg_add_rev, Int.reduceNeg]
+      fin_cases s
+      all_goals
+        simp only [listToGroup, Fin.isValue, Fin.forall_fin_two, ↓reduceIte, one_ne_zero,
+          Fin.mk_one, Int.reduceNeg, Fin.zero_eta] at *
+        simp_rw [ih]
+        simp [f, s0, s1, add_comm, sub_eq_add_neg]
+
+lemma alternating_prod_odd (n : ℕ) (s : Fin 2) :
+    listToGroup (alternating s (2 * n + 1)) =
+    if s = 0 then sr (-(n : ℤ)) else sr (n + 1 : ℤ) := by
+  induction n generalizing s with
+  | zero =>
+      fin_cases s <;> simp [alternating, listToGroup, f, s0, s1]
+  | succ n ih =>
+      rw [Nat.mul_succ, add_comm, ← add_assoc, alternating_add_two, add_comm]
+      fin_cases s
+      all_goals
+        simp only [listToGroup, Fin.isValue, Fin.forall_fin_two, ↓reduceIte, one_ne_zero,
+          Fin.zero_eta, map_cons, prod_cons, Nat.cast_add, Nat.cast_one, neg_add_rev,
+          Int.reduceNeg, Fin.mk_one] at *
+        simp_rw [ih]
+        simp only [f, s1, s0, sr_mul_sr, sub_eq_add_neg, neg_zero, add_zero, sr_mul_r, add_comm,
+          sr.injEq, zero_add, Int.reduceNeg, add_comm]
+      rw [add_comm]
+
+lemma h_wp : ∀ l, cs.wordProd l = listToGroup l := by
+  intro l; induction l with
+  | nil => rfl
+  | cons hd tl ih =>
+    simp only [wordProd, map_cons, prod_cons, listToGroup]
+    have : cs.simple = f :=by
+      ext i <;> fin_cases i <;> rfl
+    simp_rw [this]
+
 lemma reducedWord_correct (g : D∞) : cs.wordProd (reducedWord g) = g := by
-  -- 计算偶数长度交替列表的乘积
-  have h_even : ∀ n : ℕ, cs.wordProd (alternating 0 (2 * n)) = r (n : ℤ) ∧
-                         cs.wordProd (alternating 1 (2 * n)) = r (-(n : ℤ)) := by
-    intro n
-    induction n with
-    | zero =>
-      simp only [alternating, wordProd_nil, CharP.cast_eq_zero, r_zero, neg_zero, and_self]
-    | succ n ih =>
-      simp only [Fin.isValue, Nat.cast_add, Nat.cast_one, neg_add_rev, Int.reduceNeg]
-      sorry
-      --rw [ih.1, ih.2]
-
-
-  have h_odd : ∀ n : ℕ, cs.wordProd (alternating 0 (2 * n + 1)) = sr (-(n : ℤ)) ∧
-                        cs.wordProd (alternating 1 (2 * n + 1)) = sr (n + 1 : ℤ) := by
-    intro n
-    specialize h_even n
-    simp only [alternating, Fin.isValue, ↓reduceIte, cs.wordProd_cons, h_even, one_ne_zero]
-    constructor
-    · have hs : cs.simple 0 = s0 := rfl
-
-      simp [hs]
-      sorry
-    · sorry
-
+  -- cs.wordProd 就是 listToGroup
   cases g with
   | r k =>
-    simp [reducedWord]
-    split_ifs with h
-    · -- k >= 0
-      simp [h_even k.natAbs]
-      --ZMod上的abs
-      sorry
-    · -- k < 0
-      simp [h_even k.natAbs]
-      simp only [not_le] at h
-      sorry
+      dsimp [reducedWord]
+      rw [h_wp]
+      split_ifs with h
+      · -- k ≥ 0
+        rw [alternating_prod_even]
+        simp only [Fin.isValue, ↓reduceIte, Nat.cast_natAbs, Int.cast_abs, Int.cast_eq, r.injEq]
+        rw [abs_of_nonneg]
+        exact h.le
+      · rw [alternating_prod_even]
+        simp only [Fin.isValue, one_ne_zero, ↓reduceIte, Nat.cast_natAbs, Int.cast_abs, Int.cast_eq,
+          r.injEq]
+        simp only [ge_iff_le, not_le] at h
+        rw [abs_of_neg h, neg_neg]
   | sr k =>
-    simp only [reducedWord, gt_iff_lt, Fin.isValue]
-    split_ifs with h
-    · -- k > 0
-      have h_pos : 0 < k.natAbs := by exact Int.natAbs_pos.mpr (ne_of_gt h)
-      let n := k.natAbs - 1
-      have hn : k.natAbs = n + 1 := (Nat.succ_pred_eq_of_pos h_pos).symm
-      rw [hn, Nat.mul_add]
-      simp only [n, Fin.isValue, mul_one, Nat.add_one_sub_one, h_odd n, sr.injEq]
-      norm_cast
-      rw [Nat.sub_add_cancel (by sorry)]
-      push_cast
+      dsimp [reducedWord]
+      rw [h_wp]
+      split_ifs with h
+      · have h_abs : (Int.natAbs k : ℤ) = (k : ℤ) := Int.natAbs_of_nonneg (le_of_lt h)
+        let n := Int.natAbs k - 1
+        have h_n : 2 * Int.natAbs k - 1 = 2 * n + 1 := by dsimp [n]; omega
+        rw [h_n, alternating_prod_odd n 1]
+        simp only [Fin.reduceEq, ↓reduceIte]
+        have : (n : ℤ) + 1 = Int.natAbs k := by
+          dsimp [n];zify
+          have : 1 ≤ Int.natAbs k := by zify [h_abs]; exact h
+          aesop
+        rw [this, h_abs]
+      · rw [alternating_prod_odd]
+        simp only [Fin.isValue, ↓reduceIte, Nat.cast_natAbs, Int.cast_abs, Int.cast_eq, sr.injEq]
+        simp only [gt_iff_lt, not_lt] at h
+        rw [abs_of_nonpos h, neg_neg]
+
+lemma alt_inv_even (s : Fin 2) (n : ℕ) : (listToGroup (alternating s (2 * n)))⁻¹ =
+    listToGroup (alternating (if s = 0 then (1 : Fin 2) else 0) (2 * n)) := by
+  induction n generalizing s with
+  | zero =>
+    simp [alternating, listToGroup]
+  | succ n ih =>
+    rw [mul_add, mul_one]
+    simp only [alternating_add_two, Fin.isValue, ite_eq_right_iff, one_ne_zero, imp_false, ite_not]
+    set s' := if s = 0 then (1 : Fin 2) else 0
+    have : s = if s = 0 then 0 else 1 := by fin_cases s <;> decide
+    rw [← this]
+    simp only [listToGroup, map_cons, prod_cons]
+    rw [mul_inv_rev, mul_inv_rev]
+    rw [fi_inv s, fi_inv s']
+    change (listToGroup (alternating s (2 * n)))⁻¹ * f s' * f s =
+        f s' * (f s * listToGroup (alternating s' (2 * n)))
+    rw [ih s]
+    fin_cases s
+    · simp_all [f, s0, s1, alternating_prod_even, s']
+      ring
+    · simp_all [f, s0, s1, alternating_prod_even, s']
+
+lemma alt_inv_odd (s : Fin 2) (n : ℕ) : (listToGroup (alternating s (2 * n + 1)))⁻¹ =
+    listToGroup (alternating s (2 * n + 1)) := by
+  induction n generalizing s with
+  | zero =>
+    simp only [listToGroup, alternating, map_cons, map_nil, prod_cons, prod_nil, mul_one]
+    symm
+    rw [← mul_eq_one_iff_eq_inv.mp (f_sq_one s)]
+  | succ n ih =>
+    rw [show 2 * (n + 1) + 1 = 2 * n + 1 + 2 by rfl]
+    simp only [alternating_add_two, Fin.isValue]
+    set s' := if s = 0 then (1 : Fin 2) else 0
+    simp only [listToGroup, map_cons, prod_cons, mul_inv_rev, fi_inv]
+    change (listToGroup (alternating s (2 * n + 1)))⁻¹ * f s' * f s =
+        f s * (f s' * listToGroup (alternating s (2 * n + 1)))
+    rw [ih s]
+    fin_cases s
+    · simp_all [f, s0, s1, alternating_prod_odd, s']
+      ring
+    · simp_all [f, s0, s1, alternating_prod_odd, s']
+      ring
+
+lemma list_length (s : Fin 2) (n : ℕ) : (alternating s n).length = n := by
+  induction n generalizing s with
+  | zero =>
+      simp [alternating]
+  | succ k ih =>
+      simp [alternating, ih]
+
+lemma alternating_isReduced (s : Fin 2) (n : ℕ) :
+    cs.IsReduced (alternating s n) := by
+  induction n generalizing s with
+  | zero =>
+    unfold CoxeterSystem.IsReduced
+    simp [alternating]
+  | succ n ih =>
+    rw [alternating]
+    set s' := if s = 0 then (1 : Fin 2) else 0
+    unfold CoxeterSystem.IsReduced
+    simp [List.length, list_length]
+    apply isReduced_cons_of_reduced_of_not_mem_descents
+    · exact ih (if s = 0 then 1 else 0)
+    · -- 这里需要证明 f s 不在后续序列的下降集中
+      -- 对于 D∞，这等价于证明增加该元素后长度增加
       sorry
-    · -- k <= 0
-      simp [h_odd k.natAbs]
-      simp only [ not_lt] at h
-      sorry
+
+-- 所有交替列表都是最短的
+lemma length_alternating (s : Fin 2) (n : ℕ) :
+    ℓ (listToGroup (alternating s n)) = n := by
+  induction n generalizing s with
+  | zero =>
+    simp only [listToGroup, alternating, map_nil, prod_nil, length_one]
+  | succ n h =>
+    rw [alternating]
+    set s' := if s = 0 then (1 : Fin 2) else 0
+    --simp [listToGroup]
+    set g := listToGroup (alternating s' n)
+    have h_wp_alt : listToGroup (s :: alternating s' n) = f s * listToGroup (alternating s' n) := by
+      simp [listToGroup]
+    have h_len_g : ℓ g = n := h s'
+    rw [h_wp_alt, ← h_wp]
+    by_contra h_lt
+    have h_inc :
+      cs.length (cs.simple s * g) = cs.length g + 1 :=
+    by
+      apply cs.length_simple_mul_of_not_mem_leftDescent
+      -- 这里你证明 s ∉ leftDescent w
+
+    have h_less : ℓ (f s * g) < ℓ g := by
+      rw [h_len_g]
+      have :=cs.length_simple_mul (f s) s
+
+      linarith [h_lt, this, g]
+      exact Nat.lt_of_le_of_ne (cs.length_simple_mul (f s) s) (by
+        intro h_eq
+        simp_rw [h_wp, g, h_eq] at h_lt
+        simp at h_lt)
+
+    -- 如果 ℓ(s * g) < ℓ(g)，则 s ∈ Descents(g)
+    -- 在 D∞ 中，这要求 g 的 reduced word 必须以 s 开头
+    -- 但 alternating s' n 的开头是 s'，且 s ≠ s'
+    have h_chain := alternating_chain s (n + 1)
+    sorry
 
 theorem length_eq (g : D∞) :
     cs.length g = (reducedWord g).length := by
@@ -335,7 +478,9 @@ theorem length_eq (g : D∞) :
     simp only [wordProd_nil, length_one]
     rfl
   | cons head tail ih =>
-    simp_all [wordProd_cons]
+    simp_all only [wordProd_cons, cons_ne_self, ne_eq, IsEmpty.forall_iff, length_cons]
+    rw [← h_prod]
+
     sorry
 
 
@@ -376,7 +521,7 @@ lemma length_is_odd_iff_is_reflection (u : D∞) :
   cases u with
   | r k =>
     -- 证明 r(k) 的长度是偶数
-    simp only [iff_false, mod_two_not_eq_one]
+    simp only [iff_false, mod_two_not_eq_one, ← alternating_prod_even]
     sorry
   | sr k =>
     -- 证明 sr(k) 的长度是奇数
@@ -421,7 +566,7 @@ lemma two_p_one_4 (i j : ℤ) (h_le : 2 * i.natAbs ≤ 2 * j.natAbs) :
 
 section GraphStructure
 
-/-- 将根映射到 D∞ 中的反射元素 -/
+-- 将根映射到 D∞ 中的反射元素
 def s_α (α : Root) : D∞ :=
   if α.a > α.b then
     listToGroup (alternating 0 (α.a + α.b))
@@ -436,15 +581,7 @@ theorem length_root_reflection (α : Root) :
     cs.length (s_α α) = α.a + α.b := by
   rw [s_α]
   split_ifs with h
-  · -- a > b
-    have h_len : (alternating 0 (α.a + α.b)).length = α.a + α.b := by
-      sorry
-    rw [← h_len]
-    -- 利用之前定义的 length_eq，证明交替序列在 D∞ 中是约简的
-    rw [length_eq]
-    sorry
-  · -- 情况 b > a
-    sorry
+  <;>simp [length_alternating]
 
 -- 定义顶点 (Vertices)。在 D∞ 的情况下，顶点是群元素
 abbrev Vertex := D∞
@@ -468,16 +605,144 @@ example : (1 : D∞) —[α0]→ (cs.simple 0) := by
   have hs : cs.simple 0 = s0 := rfl
   simp [hα, hs]
 
-inductive le (u v : D∞) := _
+def Root.add (α β : Root) : Root :=
+  ⟨α.a + β.a, α.b + β.b, by
+    cases α.sub_one with
+    | inl h =>
+        left
+        simp [h, Nat.succ_eq_add_one, Nat.add_comm, Nat.add_left_comm, ← Nat.add_assoc]
+        group
+        sorry
+    | inr h =>
+        right
+        -- h : α.b = α.a.succ
+        simp [h, Nat.succ_eq_add_one, Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+    sorry⟩
+
+lemma s_add (α β : Root) : s_α (α.add β) =s_α α * s_α β := by
+  dsimp [s_α, Root.add]
+
+  sorry
+
+lemma IsEdge.trans {u v w} {α β} (huv : u —[α]→ v) (hvw : v —[β]→ w) :
+    u —[α.add β]→ w := by
+  dsimp [IsEdge] at *
+  subst huv hvw
+
+  sorry
+
+
+inductive _lt_ : D∞ → D∞ → Prop
+| edge {u : D∞} {v : D∞} (α : Root) (h : u —[α]→ v) : _lt_ u v
+
+lemma _lt_trans {u v w} (huv : _lt_ u v) (hvw : _lt_ v w) : _lt_ u w := by
+  rcases huv with ⟨α_uv, huv⟩
+  rcases hvw with ⟨α_vw, hvw⟩
+  refine .edge _ (huv.trans hvw)
 
 instance : PartialOrder D∞ where
-  le := _
-  lt := _
-  le_refl := _
-  le_trans := _
-  lt_iff_le_not_ge := _
-  le_antisymm := _
+  le u v := u = v ∨ _lt_ u v
+  lt := _lt_
+  le_refl := by simp
+  le_trans := by
+    rintro a b c (rfl|hab) (rfl|hbc)
+    any_goals tauto
+    right
+    exact _lt_trans hab hbc
+  lt_iff_le_not_ge := by
+    rintro a b
+    sorry
+  le_antisymm := by
+    rintro a b (rfl|hab)
+    · simp
+    · rintro (rfl|h)
+      · simp
+      · sorry
+
+lemma two_three (u v : D∞) : u < v ↔ cs.length u < cs.length v:= by
+  constructor
+  · sorry
+  · intro h
+    have : ℓ v - ℓ u = 1 := by sorry
+    simp_all
+    sorry
+
 
 end GraphStructure
 
 #synth PartialOrder  (DihedralGroup 0)
+
+structure Degree where
+  d0 : ℕ
+  d1 : ℕ
+  deriving DecidableEq, Repr
+
+instance : Add Degree where
+  add d e := ⟨d.d0 + e.d0, d.d1 + e.d1⟩
+
+--度数的偏序关系
+instance : PartialOrder Degree where
+  le d1 d2 := d1.d0 ≤ d2.d0 ∧ d1.d1 ≤ d2.d1
+  le_refl d := ⟨le_refl _, le_refl _⟩
+  le_trans d1 d2 d3 h12 h23 := ⟨le_trans h12.1 h23.1, le_trans h12.2 h23.2⟩
+  le_antisymm d1 d2 h12 h21 := by
+    cases d1; cases d2
+    simp only [Degree.mk.injEq] at *
+    exact ⟨Nat.le_antisymm h12.1 h21.1, Nat.le_antisymm h12.2 h21.2⟩
+
+def getDegree : D∞ → Degree
+  | .r i =>
+    let k := i.natAbs
+    ⟨k, k⟩
+  | .sr i =>
+    let k := i.natAbs
+    if k ≥ 0 then
+      -- 当 i=0 时为 s0 (1,0); 当 i=1 时为 s1 (0,1); 当 i=2 时为 s1s0s1 (1,2)
+      if i = 0 then ⟨1, 0⟩ else ⟨i.natAbs - 1, i.natAbs⟩
+    else
+      -- 当 i=-1 时为 s0s1s0 (2,1); 当 i=-2 时为 s0s1s0s1s0 (3,2)
+      ⟨i.natAbs + 1, i.natAbs⟩
+
+def Root.toDegree (α : Root) : Degree :=⟨α.a, α.b⟩
+
+instance : Zero Degree where
+  zero := ⟨0, 0⟩
+
+inductive HasChain : Vertex → Vertex → Degree → Prop where
+  | refl (u : Vertex) : HasChain u u 0
+  | step {u v w : Vertex} {d : Degree} {α : Root} :
+      HasChain u v d → IsEdge v w α → HasChain u w (d + α.toDegree)
+
+def CanReachWithin (u v : Vertex) (d : Degree) : Prop :=
+  exists d', HasChain u v d' ∧ d' ≤ d
+
+--Definition 2.4: 曲线邻域 Gamma_d(u)
+def CurveNeighborhood (u : Vertex) (d : Degree) : Set Vertex :=
+  { v | CanReachWithin u v d ∧
+        ∀ v' : Vertex, CanReachWithin u v' d → v ≤ v' → v = v' }
+
+-- 定义标量乘法
+def Degree.scale (n : ℕ) (d : Degree) : Degree :=
+  ⟨n * d.d0, n * d.d1⟩
+
+instance : HMul ℕ Degree Degree where
+  hMul := Degree.scale
+
+-- 定义度数减法（如果 d1 ≥ d2
+def Degree.sub (d1 d2 : Degree) : Degree :=
+  ⟨d1.d0 - d2.d0, d1.d1 - d2.d1⟩
+
+lemma two_5_main (u v : Vertex) (d : Degree) :
+    HasChain u v d →
+    ∃ (r s : ℕ), d.d0 = (getDegree (u⁻¹ * v)).d0 + 2 * r ∧
+                 d.d1 = (getDegree (u⁻¹ * v)).d1 + 2 * s := by
+  intro h
+  sorry
+
+
+lemma two_5_consequence (u v : Vertex) (d : Degree) (h : HasChain u v d) :
+    getDegree (u⁻¹ * v) ≤ d := by
+  obtain ⟨r, s, hr, hs⟩ := two_5_main u v d h
+  constructor
+  · rw [hr]; exact Nat.le_add_right _ _
+  · rw [hs]; exact Nat.le_add_right _ _
