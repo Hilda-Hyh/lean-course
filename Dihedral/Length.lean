@@ -201,80 +201,200 @@ lemma list_length (s : Fin 2) (n : ℕ) : (alternating s n).length = n := by
   | succ k ih =>
       simp [alternating, ih]
 
+-- 辅助函数：定义 D∞ 中元素的预期长度
+def explicit_length : D∞ → ℕ
+| r k => 2 * k.natAbs
+| sr k =>
+  let k_int : ℤ := k
+  if k_int > 0 then
+    2 * k.natAbs - 1
+  else
+    2 * k.natAbs + 1
 
+lemma explicit' : explicit_length 1 = 0 := by
+  rfl
 
+-- 这证明了 explicit_length 满足三角不等式的一半，也即 Lipschtiz 性质
+lemma explicit_length_mul_le (i : Fin 2) (g : D∞) :
+    explicit_length (f i * g) ≤ explicit_length g + 1 := by
+  fin_cases i
+  · -- Case: multiplying by s0 (f 0)
+    simp only [f, s0]
+    cases g with
+    | r k =>
+      simp only [sr_mul_r, zero_add]
+      dsimp [explicit_length]
+      split_ifs with h
+      · apply Nat.le_succ_of_le
+        simp only [tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
+      · apply le_refl
+    | sr k =>
+      simp only [sr_mul_sr, sub_zero]
+      dsimp [explicit_length]
+      split_ifs with h
+      · -- k > 0
+        rw [Nat.sub_add_cancel]
+        have hk : 1 ≤ Int.natAbs k := by
+          have : Int.natAbs k > 0 := Int.natAbs_pos.mpr (ne_of_gt h)
+          omega
+        nlinarith
+      · -- k <= 0
+        apply Nat.le_succ_of_le
+        apply Nat.le_succ
+  · simp only [f, s1]
+    cases g with
+    | r k =>
+      have h_s1 : sr (1 : ZMod 0) = sr 0 * r 1 := by simp [sr_mul_r]
+      rw [h_s1, sr_mul_r, zero_add, sr_mul_r]
+      dsimp [explicit_length]
+      let k_int : ℤ := k
+      by_cases hk : k_int ≥ 0
+      · -- k >= 0, 1+k > 0
+        have h_pos : 1 + k_int > 0 := by linarith
+        rw [if_pos h_pos]
+        have : (1 + k).natAbs = 1 + k.natAbs := by
+          rw [Int.natAbs_add_of_nonneg]
+          all_goals
+            norm_num
+          exact hk
+        rw [this, Nat.mul_add, mul_one]
+        omega
+      · -- k < 0
+        push_neg at hk
+        by_cases hk1 : k = -1
+        · subst hk1; simp
+        · have h_nonpos : 1 + k_int ≤ 0 := by linarith
+          rw [if_neg (not_lt.mpr h_nonpos)]
+          have : (1 + k).natAbs = k.natAbs - 1 := by omega
+          rw [this, Nat.mul_sub, mul_one]
+          apply Nat.le_trans (m := 2 * k.natAbs - 1)
+          · omega
+          · apply Nat.le_succ_of_le
+            apply Nat.sub_le
+    | sr k =>
+      have : sr 1 * sr k = r (k - 1) := by simp [sr_mul_sr]
+      rw [this]
+      dsimp [explicit_length]
+      split_ifs with h
+      · let k_int : ℤ := k
+        have : (k - 1).natAbs = k.natAbs - 1 := by
+          have h1 : 1 ≤ k_int := Int.add_one_le_iff.mpr h
+          rw [Int.natAbs_sub_of_nonneg_of_le (by omega) h1]
+          simp only [isUnit_one, Int.natAbs_of_isUnit]
+          ring
+        rw [this, Nat.mul_sub, mul_one]
+        omega
+      · let k_int : ℤ := k
+        have h_le : k_int ≤ 0 := Int.not_lt.mp h
+        have h_abs : (k - 1).natAbs = k.natAbs + 1 := by omega
+        rw [h_abs]
+        linarith
+
+lemma cs_length_ge_explicit (g : D∞) : explicit_length g ≤ ℓ g := by
+  set l := ℓ
+  have h_bound (L : List (Fin 2)) : explicit_length (cs.wordProd L) ≤ L.length := by
+    induction L with
+    | nil =>
+      simp only [wordProd_nil, length_nil, nonpos_iff_eq_zero, explicit' ]
+    | cons i L ih =>
+      simp only [List.length_cons, CoxeterSystem.wordProd_cons]
+      have h_simple : cs.simple i = f i := by
+        fin_cases i; all_goals
+          simp; rfl
+      rw [h_simple]
+      apply le_trans (explicit_length_mul_le i (cs.wordProd L))
+      exact Nat.add_le_add_right ih 1
+  have : ∃ (L : List (Fin 2)), L.length = ℓ g ∧ g = cs.wordProd L :=
+    cs.exists_reduced_word g
+  obtain ⟨L, hL_len, hL_prod⟩ := this
+  dsimp [l]
+  rw [← hL_len, ← hL_prod.symm]
+  exact h_bound L
+
+lemma explicit_length_alternating (s : Fin 2) (n : ℕ) :
+    explicit_length (listToGroup (alternating s n)) = n := by
+  match h_mod : n % 2 with
+  | 0 =>
+    have h_even : ∃ k, n = 2 * k := Nat.dvd_of_mod_eq_zero h_mod
+    obtain ⟨k, rfl⟩ := h_even
+    rw [alternating_prod_even]
+    fin_cases s<;>simp [explicit_length]
+  | 1 =>
+    have h_odd : ∃ k, n = 2 * k + 1 := ⟨n / 2, by omega⟩
+    obtain ⟨k, rfl⟩ := h_odd
+    rw [alternating_prod_odd]
+    fin_cases s
+    · simp [explicit_length]
+    · simp [explicit_length]
+      omega
+  | n + 2 => omega
+
+-- 最终证明：alternating s n 的长度确实为 n
 lemma alternating_isReduced (s : Fin 2) (n : ℕ) :
     cs.IsReduced (alternating s n) := by
-  induction n generalizing s with
-  | zero =>
-    unfold CoxeterSystem.IsReduced
-    simp [alternating]
-  | succ n ih =>
-    rw [alternating]
-    set s' := if s = 0 then (1 : Fin 2) else 0
-    unfold CoxeterSystem.IsReduced
-    simp only [List.length, list_length]
-    set L := alternating s' n
-    rw [wordProd_cons]
-    set g := cs.wordProd L
-    -- 目标是证明 cs.length (f s * g) = n + 1
-    have h_len_g : cs.length g = n :=by
-      have : cs.IsReduced L:= ih s'
-      simp at this
-      dsimp [g]
-
-      sorry
-    rw [← h_len_g]
-    rw [← CoxeterSystem.not_isLeftDescent_iff cs]
-    --rw [isLeftDescent_iff_not_isLeftDescent_mul, not_not, not_isLeftDescent_iff]
-    by_contra h_des
-    --rw [isLeftDescent_iff] at h_des
-    -- 填充 sorry 的部分
-    have h_s_ne_s' : s ≠ s' := by
-      fin_cases s <;> simp [s']
-
-
-    -- 获取 L 的第一个元素。因为 n > 0 (若 n=0 则 g=1, 下降集为空)
-    if hn : n = 0 then
-      subst hn
-      simp only [g, L, wordProd_nil, alternating] at h_des
-      rw [isLeftDescent_iff, mul_one, show cs.length 1 = 0 by exact ih s,
-        show ℓ (cs.simple s) = 1 by exact length_simple cs s] at h_des
-      contradiction
-    else
-      -- 对于 n > 0, L = s' :: tail
-      have h_L_head : L.head (by aesop) = s' := by
-        subst s'; fin_cases s <;> simp [L, alternating];sorry;sorry
-      sorry
-
+  dsimp [CoxeterSystem.IsReduced]
+  let g := cs.wordProd (alternating s n)
+  have h_le : ℓ g ≤ (alternating s n).length := cs.length_wordProd_le _
+  have h_ge : (alternating s n).length ≤ ℓ g := by
+    rw [list_length s n]
+    have h_calc : explicit_length g = n := by
+      simp [g, h_wp, explicit_length_alternating s n]
+    rw [← h_calc]
+    exact cs_length_ge_explicit g
+  exact le_antisymm h_le h_ge
 
 -- 所有交替列表都是最短的
 lemma length_alternating (s : Fin 2) (n : ℕ) :
     ℓ (listToGroup (alternating s n)) = n := by
-  induction n generalizing s with
-  | zero =>
-    simp only [listToGroup, alternating, map_nil, prod_nil, length_one]
-  | succ n h =>
-    rw [← h_wp (alternating s (n + 1)), alternating_isReduced, list_length]
+  have h_g : listToGroup (alternating s n) = cs.wordProd (alternating s n) := (h_wp _).symm
+  rw [h_g]
+  have h_red := alternating_isReduced s n
+  rw [CoxeterSystem.IsReduced] at h_red
+  rw [h_red, list_length]
 
 theorem length_eq (g : D∞) :
-    cs.length g = (reducedWord g).length := by
-  induction reducedWord g with
-  | nil => sorry
-  | cons head tail ih => sorry
-
+   ℓ g = (reducedWord g).length := by
+  have h_prod := reducedWord_correct g
+  cases g with
+  | r k =>
+    dsimp [reducedWord]
+    split_ifs with h
+    · have h_red_eq : reducedWord (r k) = alternating 0 (2 * Int.natAbs k) := by
+        simp [reducedWord, h]
+      rw [ ← h_prod,h_red_eq, h_wp, length_alternating, list_length]
+    · have h_red_eq : reducedWord (r k) = alternating 1 (2 * Int.natAbs k) :=by
+        simp [reducedWord, h]
+      rw [← h_prod, h_red_eq, h_wp, length_alternating, list_length]
+  | sr k =>
+    dsimp [reducedWord]
+    split_ifs with h
+    · have h_red_eq : reducedWord (sr k) = alternating 1 (2 * Int.natAbs k - 1) :=by
+        simp [reducedWord, h]
+      rw [← h_prod, h_red_eq, h_wp, length_alternating, list_length]
+    · have h_red_eq : reducedWord (sr k) = alternating 0 (2 * Int.natAbs k + 1) :=by
+        simp [reducedWord, h]
+      rw [← h_prod, h_red_eq, h_wp, length_alternating, list_length]
 
 
 lemma reducedWord_is_reduced (g : D∞) : cs.IsReduced (reducedWord g) := by
-  --   reducedWord g 是一个满足 (· ≠ ·) 链的列表。
-  have h_chain : List.IsChain (· ≠ ·) (reducedWord g) := by
-    cases g with
-    | r k =>
-      dsimp only [reducedWord]
-      split <;> (apply alternating_chain)
-    | sr k =>
-      dsimp only [reducedWord]
-      split <;> (apply alternating_chain)
-  unfold CoxeterSystem.IsReduced
+  rw [CoxeterSystem.IsReduced]
   rw [reducedWord_correct g]
-  exact length_eq g
+  rw [length_eq g]
+
+@[simp]
+theorem length_r (k : ℤ) : ℓ (r k) = 2 * k.natAbs := by
+  rw [length_eq (r k)]
+  dsimp [reducedWord]
+  split_ifs with h
+  · -- k ≥ 0 情况
+    rw [list_length]
+  · -- k < 0 情况
+    rw [list_length]
+
+@[simp]
+theorem length_sr (k : ℤ) : ℓ (sr k) =
+    if k > 0 then 2 * k.natAbs - 1 else 2 * k.natAbs + 1 := by
+  rw [length_eq (sr k)]
+  dsimp [reducedWord]
+  split_ifs with h1<;>
+    rw [list_length]

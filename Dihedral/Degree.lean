@@ -17,68 +17,37 @@ def α1 : Root := ⟨0, 1, Or.inr rfl⟩
 -- 根的长度定义为 a + b
 def Root.length (α : Root) : ℕ := α.a + α.b
 
-lemma two_p_one_1 (u : D∞) : cs.length u = cs.length u⁻¹ :=
+lemma lemma_2_1_1 (u : D∞) : cs.length u = cs.length u⁻¹ :=
   (cs.length_inv u).symm
 
--- 证明 sr k 的长度总是奇数
-lemma length_sr_odd (k : ℤ) : (cs.length (sr k)) % 2 = 1 := by
-  rw [length_eq, reducedWord]
-  split_ifs with h
-  · -- k > 0: length is 2|k| - 1
-    rw [list_length]
-    have : 2 * k.natAbs - 1 = 2 * (k.natAbs - 1) + 1 := by
-      have : k.natAbs ≥ 1 := Nat.succ_le_iff.mpr (Int.natAbs_pos.mpr (Int.ne_of_gt h) )
-      omega
-    rw [this]
-    simp [Nat.add_mod]
-  · -- k ≤ 0: length is 2|k| + 1
-    rw [list_length]
-    simp [Nat.add_mod]
-
-lemma length_r_even (k : ℤ) : (cs.length (r k)) % 2 = 0 := by
-  rw [length_eq, reducedWord]
-  split_ifs
-  all_goals
-    rw [list_length]
-    simp only [mul_mod_right]
-
-lemma length_is_odd_iff_is_reflection (u : D∞) :
-    (cs.length (u : DihedralGroup 0)) % 2 = 1 ↔
-      match u with | r _ => False | sr _ => True := by
-  cases u with
-  | r k =>
-    -- 证明 r(k) 的长度是偶数
-    have h_even := length_r_even k
-    simp only [iff_false, h_even]
-    tauto
-  | sr k =>
-    -- 证明 sr(k) 的长度是奇数
-    have h_odd := length_sr_odd k
-    simp only [ h_odd]
-
-
-lemma two_p_one_3 (u v : D∞) : cs.length (u * v) ≤ cs.length u + cs.length v :=
+lemma lemma_2_1_3 (u v : D∞) : ℓ (u * v) ≤ ℓ u + ℓ v :=
   cs.length_mul_le u v
 
-lemma two_p_one_4 (i j : ℤ) (h_le : 2 * i.natAbs ≤ 2 * j.natAbs) :
-    cs.length (r i * r j) = (cs.length (r i) + cs.length (r j)) ∨
-    cs.length (r i * r j) = (cs.length (r j) - cs.length (r i)) := by
-  --考虑CoxeterSystem上的Bruhat基
-  rw [r_mul_r]
-  have h_le : i.natAbs ≤ j.natAbs := by exact Nat.le_of_mul_le_mul_left h_le (by simp)
-  obtain hi | hi | hi := lt_trichotomy i 0
-  · -- i < 0
-    obtain hj | hj | hj := lt_trichotomy j 0
-    · -- j < 0: 同号相减
-      sorry
-    · -- j = 0
-      sorry
-    · -- j > 0: 异号相加
-      sorry
-  · -- i = 0
-    sorry
-  · sorry
+def Di_induction_on {P : D∞ → Prop} (g : D∞)
+    (r : ∀ k, P (r k)) (sr : ∀ k, P (sr k)) : P g := by
+  cases g
+  · apply r
+  · apply sr
 
+theorem lemma_2_1_4 (u v : D∞) (huv : ℓ u ≤ ℓ v) :
+    ℓ (u * v) = ℓ u + ℓ v ∨ ℓ (u * v) = ℓ v - ℓ u := by
+  cases u with
+  | r u =>
+    cases v with
+    | r v =>
+      simp [r_mul_r, length_r] at *
+      omega
+    | sr v =>
+      simp [r_mul_sr, length_r, length_sr] at *
+      split_ifs at * <;> omega
+  | sr u =>
+    cases v with
+    | r v =>
+      simp [sr_mul_r, length_r, length_sr] at *
+      split_ifs at * <;> omega
+    | sr v =>
+      simp [sr_mul_sr, length_r, length_sr] at *
+      split_ifs at * <;> omega
 
 structure Degree where
   a : ℕ
@@ -112,12 +81,8 @@ instance : AddCommMonoid Degree where
   nsmul_zero n := by
     ext <;> (simp; rfl)
   nsmul_succ n d := by
-    ext
-    · simp only [succ_mul]
-      rfl
-    · simp only [succ_mul]
-      rfl
-
+    ext; all_goals
+      simp only [succ_mul]; rfl
 
 --度数的偏序关系
 instance : PartialOrder Degree where
@@ -189,7 +154,7 @@ inductive HasChain : Vertex → Vertex → Degree → Prop where
   | step {u v w : Vertex} {d : Degree} {α : Root} :
       HasChain u v d → IsEdge v w α → HasChain u w (d + α.toDegree)
 
--- 定义递增链：在每一步步进时增加 cs.length w > cs.length v 的判断
+-- 递增链：在每一步步进时增加 cs.length w > cs.length v 的判断
 inductive HasIncreasingChain : Vertex → Vertex → Degree → Prop where
   | refl (u : Vertex) : HasIncreasingChain u u 0
   | step {u v w : Vertex} {d : Degree} {α : Root} :
@@ -242,7 +207,7 @@ lemma Lt_trans {u v w} (huv : Lt u v) (hvw : Lt v w) : Lt u w := by
     rw [h_eq] at l3
     exact lt_irrefl _ l3
 
-theorem Lt_iff_le_not_ge (a b : Vertex) :
+lemma Lt_iff_le_not_ge (a b : Vertex) :
     Lt a b ↔ (Lt a b ∨ a = b) ∧ ¬(Lt b a ∨ b = a) := by
   constructor
   · intro h
@@ -288,9 +253,6 @@ instance : PartialOrder D∞ where
       exact lt_irrefl _ contra
     · exact h.symm
 
-lemma edge_to_higher_length (u : Vertex) (k : ℕ) :
-    ∃ α, cs.length (u * s_α α) = cs.length u + 1 := by
-  sorry
 
 lemma exists_root_eq_sr (k : ℤ) : ∃ α : Root, s_α α = sr k := by
   by_cases h : k > 0
@@ -305,7 +267,9 @@ lemma exists_root_eq_sr (k : ℤ) : ∃ α : Root, s_α α = sr k := by
     let α : Root := ⟨a, b, Or.inr h_rel⟩
     use α
     simp only [s_α]
-    have : ¬ (α.a > α.b) := by sorry
+    have : ¬ (α.a > α.b) := by
+      change ¬ (a > b)
+      linarith
     simp only [gt_iff_lt, this, ↓reduceIte, Fin.isValue]
     have h_len : a + b = 2 * k.natAbs - 1 := by
       dsimp [a, b]; omega
@@ -322,7 +286,6 @@ lemma exists_root_eq_sr (k : ℤ) : ∃ α : Root, s_α α = sr k := by
               simp [Nat.sub_add_cancel (Nat.succ_le_iff.mpr (Int.natAbs_pos.mpr (Int.ne_of_gt h)))]
       _ = k := by simpa using (le_of_lt h)
     rw [this]
-
   · -- Case k ≤ 0
     let a := k.natAbs + 1
     let b := k.natAbs
@@ -330,7 +293,9 @@ lemma exists_root_eq_sr (k : ℤ) : ∃ α : Root, s_α α = sr k := by
     let α : Root := ⟨a, b, Or.inl h_rel⟩
     use α
     simp only [s_α]
-    have : α.a > α.b := by sorry
+    have : α.a > α.b := by
+      change a > b
+      linarith
     simp only [gt_iff_lt, this, ↓reduceIte, Fin.isValue]
     have h_len : a + b = 2 * k.natAbs + 1 := by
       dsimp [a, b]; omega
@@ -347,12 +312,23 @@ lemma inv_mul_is_sr_of_parity_diff (u v : Vertex)
     (h_parity : (cs.length u) % 2 ≠ (cs.length v) % 2) :
     ∃ k : ℤ, u⁻¹ * v = sr k := by
   -- D∞ 中元素要么是 r k 要么是 sr k
-  cases (u⁻¹ * v) with
-  | sr k => exact ⟨k, rfl⟩
+  let g := u⁻¹ * v
+  cases hg : g with
+  | sr k => use k
   | r k =>
-    by_contra
-    have h : (cs.length (r k)) % 2 = 0 := length_r_even k
-    sorry
+    exfalso
+    have h_len_g : cs.length g % 2 = 0 := by
+      rw [hg, length_r]
+      omega
+    have h_hom : cs.length g % 2 = (cs.length u + cs.length v) % 2 := by
+      dsimp [g]
+      rw [cs.length_mul_mod_two, cs.length_inv]
+    rw [h_hom] at h_len_g
+    rw [Nat.add_mod] at h_len_g
+    have hu_mod : cs.length u % 2 < 2 := Nat.mod_lt _ (by norm_num : 0 < 2)
+    have hv_mod : cs.length v % 2 < 2 := Nat.mod_lt _ (by norm_num : 0 < 2)
+    interval_cases cs.length u % 2 <;> interval_cases cs.length v % 2 <;>
+    omega
 
 lemma lt_of_succ_length (u v : Vertex) (h : cs.length v = cs.length u + 1) : u < v := by
   -- 确定 u⁻¹v 是反射 sr k
@@ -421,7 +397,7 @@ theorem bruhat_iff_length_less (u v : Vertex) :
         exact lt_irrefl 0 h_len_v_pos
       obtain ⟨i, h_descent⟩ := cs.exists_rightDescent_of_ne_one h_ne_one
       let w := v * cs.simple i
---∃w，使得 cs.length w + 1 = cs.length v，回到归纳
+      --∃w，使得 cs.length w + 1 = cs.length v，回到归纳
       have hi : cs.length w = cs.length v - 1 := by
         rw [cs.isRightDescent_iff] at h_descent
         exact Nat.eq_sub_of_add_eq h_descent

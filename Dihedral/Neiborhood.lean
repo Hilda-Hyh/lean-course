@@ -52,13 +52,14 @@ def maximalElements (S : Set Vertex) : Set Vertex :=
   { v | IsMaximalIn v S }
 
 theorem lemma_3_1 (u : Vertex) (d : Degree) :
-    -- 第一部分：唯一极大元的情况
     (u ≠ 1 ∨ (u = 1 ∧ d.d0 ≠ d.d1)) →
       ∃! v, IsMaximalIn v (Ad u d) := by
   intro h_cond
-  -- Ad u d 是有限集，因此必然存在极大元。
+  rcases h_cond with (h_ne_one | ⟨h_eq_one, h_d_neq⟩)
+  · sorry
+  · sorry
+  -- Ad u d 是有限集，因此必然存在极大元。可能需要用到Zorn？
 
-  sorry
 
 theorem lemma_3_1_b (a : ℕ) :
     -- 第二部分：d = (a, a) 且 u = 1 的情况
@@ -106,8 +107,7 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) :
     v ∈ CurveNeighborhood u d → (u⁻¹ * v) ∈ Ad u d := by
   intro hv
   constructor
-  ·
-    by_cases hu : u = 1
+  · by_cases hu : u = 1
     · simp [hu]
     · -- 对于 u ≠ 1，使用反证法
       by_contra h_not_eq
