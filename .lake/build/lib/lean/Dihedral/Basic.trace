@@ -1,0 +1,33 @@
+{"synthetic": false,
+ "schemaVersion": "2025-09-10",
+ "outputs":
+ {"o": ["1c31ef963bb212f2.olean"],
+  "i": "b97b308336f8c37c.ilean",
+  "c": "3c7d6d4eae8307b6.c"},
+ "log":
+ [{"message":
+   ".> LEAN_PATH=D:\\lean\\project\\lean-course\\.lake\\packages\\batteries\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\Qq\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\aesop\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\proofwidgets\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\importGraph\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\LeanSearchClient\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\plausible\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\MD4Lean\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\BibtexQuery\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\UnicodeBasic\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\Cli\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\mathlib\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\checkdecls\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\packages\\doc-gen4\\.lake\\build\\lib\\lean;D:\\lean\\project\\lean-course\\.lake\\build\\lib\\lean c:\\Users\\yihe huang\\.elan\\toolchains\\leanprover--lean4---v4.26.0-rc2\\bin\\lean.exe D:\\lean\\project\\lean-course\\Dihedral\\Basic.lean -o D:\\lean\\project\\lean-course\\.lake\\build\\lib\\lean\\Dihedral\\Basic.olean -i D:\\lean\\project\\lean-course\\.lake\\build\\lib\\lean\\Dihedral\\Basic.ilean -c D:\\lean\\project\\lean-course\\.lake\\build\\ir\\Dihedral\\Basic.c --setup D:\\lean\\project\\lean-course\\.lake\\build\\ir\\Dihedral\\Basic.setup.json --json",
+   "level": "trace"}],
+ "inputs":
+ [["Dihedral.Basic:deps",
+   [["deps",
+     [["Dihedral/Dihedral:extraDep",
+       [["@Dihedral:extraDep", "00000000000006bb"]]],
+      ["imports",
+       [["Mathlib transitive imports (legacy)", "cbb2dde03541a516"],
+        ["Mathlib:importAllArts", "f843b71ccd66b3a7"]]]]],
+    ["libs",
+     [["import dynlibs", "00000000000006bb"],
+      ["package external libraries", "00000000000006bb"],
+      ["module dynlibs", "00000000000006bb"],
+      ["module plugins", "00000000000006bb"]]]]],
+  ["Lean 4.26.0, commit 9d4ad1273f6cea397c3066c2c83062a4410d16bf",
+   "c1ab21c0a088cff7"],
+  ["D:\\lean\\project\\lean-course\\Dihedral\\Basic.lean", "ae4a2d023f8bc61a"],
+  ["options",
+   [["-DmaxSynthPendingDepth=3", "c78e353d34de85d4"],
+    ["-Dweak.linter.mathlibStandardSet=true", "8a155799906f2b42"],
+    ["-DrelaxedAutoImplicit=false", "74a2b5546b55be80"],
+    ["-Dpp.unicode.fun=true", "9b94070140457fab"]]],
+  ["Module.leanArgs: #[]", "00000000000006bb"]],
+ "depHash": "07b3c2030bc7e938"}
