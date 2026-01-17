@@ -458,6 +458,20 @@ lemma φ_s_alpha_eq (α : Root) : φ (s_α α) = α.toDegree := by
       simp [h_pos, getDegree, h_nezero]
       omega
 
+lemma getDegree_alternating (s : Fin 2) (n : ℕ) :
+    φ (listToGroup (alternating s n)) =
+    if n % 2 = 0 then
+      let k := n / 2
+      ⟨k, k⟩
+    else
+      if s = 0 then
+        let k := n / 2
+        ⟨k + 1, k⟩
+      else
+        let k := n / 2
+        ⟨k, k + 1⟩ := by
+  sorry
+
 lemma getDegree_r (k : ℤ) : φ (r k) = ⟨k.natAbs, k.natAbs⟩ := rfl
 
 lemma getDegree_sr (k : ℤ) :
@@ -473,7 +487,8 @@ lemma degree_add_parity (g h : D∞) :
       (φ g).a + (φ h).a = (φ (g * h)).a + 2 * r ∧
       (φ g).b + (φ h).b = (φ (g * h)).b + 2 * s := by
 --对ZMod2中奇偶进行讨论
-  sorry
+  induction g using alternating_cases with
+  | h s n => sorry
 
 -- Main Lemma 2.5 Proof
 lemma lemma_2_5_a (u v : Vertex) (d : Degree) :
@@ -518,3 +533,26 @@ lemma lemma_2_5_b (u v : Vertex) (d : Degree) (h : HasChain u v d) :
   constructor
   · rw [hr]; exact Nat.le_add_right _ _
   · rw [hs]; exact Nat.le_add_right _ _
+
+
+open CoxeterSystem DihedralGroup List
+
+-- 1. 定义 Ray：从 s 开始，长度为 n 的交替乘积
+def ray (s : Fin 2) (n : ℕ) : D∞ := listToGroup (alternating s n)
+
+-- 辅助：Fin 2 的加法即“翻转”，用于计算下一个生成元
+-- 注意：Fin 2 自动模 2，所以 n : ℕ 会被自动转换
+instance : Add (Fin 2) where
+  add a b := a + b
+
+
+
+
+theorem ray_induction_on {P : D∞ → Prop} (s : Fin 2)
+    (base : P (ray s 0)) -- 证明 P(1)
+    (step : ∀ n, P (ray s n) → P (ray s (n + 1))) : -- 归纳步：右边加一个生成元
+    ∀ n, P (ray s n) := by
+  intro n
+  induction n with
+  | zero => exact base
+  | succ n ih => exact step n ih

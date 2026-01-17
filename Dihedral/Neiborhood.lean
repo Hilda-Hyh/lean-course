@@ -24,17 +24,115 @@ def Ad (u : Vertex) (d : Degree) : Set Vertex :=
 def maximalElements (S : Set Vertex) : Set Vertex :=
   { v | IsMaximalIn v S }
 
-theorem lemma_3_1 (u : Vertex) (d : Degree) :
-    (u ≠ 1 ∨ (u = 1 ∧ d.a ≠ d.b)) →
-      ∃! v, IsMaximalIn v (Ad u d) := by
+lemma h_len_bound : ∀ v ∈ Ad u d, ℓ v ≤ d.a + d.b + 1 := by
+    intro v hv
+    obtain ⟨h, h_deg⟩ := hv
+    induction v using alternating_cases with
+    | h s n =>
+      simp_all only [length_alternating]
+      induction n using n_mod_2_induction with
+      | h0 k =>
+        simp  only[getDegree_alternating] at h_deg
+        simp only [mul_mod_right, ↓reduceIte, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
+          mul_div_cancel_left₀] at h_deg
+        have : 2 * k ≤ d.a + d.b :=
+          by simpa [two_mul, Nat.add_comm] using
+              Nat.add_le_add h_deg.1 h_deg.2
+        exact Nat.le_trans this (Nat.le_succ _)
+      | h1 k =>
+        simp  only[getDegree_alternating] at h_deg
+        fin_cases s
+        · simp only [mul_add_mod_self_left, mod_succ, one_ne_zero, ↓reduceIte, Fin.zero_eta,
+          Fin.isValue] at h_deg
+          have h' := by simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+            using Nat.add_le_add h_deg.1 h_deg.2
+          rw [← two_mul, show 2 * ((1 + 2 * k) / 2) = 2 * k by omega, add_comm] at h'
+          exact Nat.le_trans h' (Nat.le_succ _)
+        · simp only [mul_add_mod_self_left, mod_succ, one_ne_zero, ↓reduceIte, Fin.mk_one,
+            Fin.isValue] at h_deg
+          have := by simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
+            using Nat.add_le_add h_deg.1 h_deg.2
+          rw [← two_mul, show 2 * ((1 + 2 * k) / 2) = 2 * k by omega] at this
+          have h' : 2 * k + 2 ≤ d.a + d.b + 1 := by omega
+          exact Nat.succ_le_succ_iff.mp <|
+            Nat.le_trans (Nat.le_succ _) (Nat.succ_le_succ h')
+
+lemma h_finite : (Ad u d).Finite := by
+    let limit := d.a + d.b + 1
+    let S_bound := {v : D∞ | ℓ v ≤ limit}
+    have h_subset : Ad u d ⊆ S_bound := fun v hv => h_len_bound v hv
+    apply Set.Finite.subset _ h_subset
+    -- The set of elements with bounded length is finite
+    have : S_bound = ⋃ k ∈ Finset.range (limit + 1), {v | ℓ v = k} := by
+      ext x
+      simp only [S_bound, Set.mem_setOf_eq, Set.mem_iUnion, Finset.mem_range]
+      constructor
+      · intro h; use ℓ x; constructor <;> linarith
+      · rintro ⟨i, hi, hx⟩; rw [hx]; linarith
+    rw [this]
+    have hfinite :
+        (⋃ k ∈ (Finset.range (limit + 1) : Set ℕ),
+          {v | cs.length v = k}).Finite := by
+      apply Set.Finite.biUnion (Finset.finite_toSet _)
+      intro k hk
+      have h_finite_image : (Set.range (fun (s : Fin 2) => listToGroup (alternating s k))).Finite :=
+        Set.finite_range _
+      apply Set.Finite.subset h_finite_image
+      intro v hv
+      simp only [Set.mem_setOf_eq] at hv
+      revert hv
+      apply alternating_cases (P := fun v => ℓ v =
+         k → v ∈ Set.range fun s => listToGroup (alternating s k))
+      intro s n h_len
+      rw [length_alternating] at h_len
+      subst h_len
+      exact Set.mem_range_self s
+    simpa using hfinite
+
+lemma h_nonempty : (Ad u d).Nonempty := ⟨1, ⟨by simp, by
+    simp [getDegree_one]; constructor<;> linarith⟩⟩
+
+lemma  h_chain {u : Vertex} (h : u ≠ 1) : IsChain (· ≤ ·) (Ad u d) := by
+  intro x hx y hy hxy
+  simp only
+  --simp only [not_or] at h
+  --obtain ⟨h1, h2⟩ := h
+  obtain ⟨hv, hv'⟩ := hx
+  obtain ⟨hw, hw'⟩ := hy
+  change ((Lt x y) ∨ (x = y)) ∨ ((Lt y x) ∨ (y = x))
+  simp [hxy, hxy.symm]
+  sorry
+
+theorem lemma_3_1_1 (u : Vertex) (d : Degree) :
+    (u ≠ 1) → ∃! v, IsMaximalIn v (Ad u d) := by
   intro h_cond
-  rcases h_cond with (h_ne_one | ⟨h_eq_one, h_d_neq⟩)
-  · sorry
-  · sorry
-  -- Ad u d 是有限集，因此必然存在极大元。可能需要用到Zorn？
+  obtain ⟨m, hm⟩ := Set.Finite.exists_maximalFor (fun x => x) (Ad u d) h_finite h_nonempty
+  refine ⟨m, ?_⟩
+  dsimp [IsMaximalIn]
+  constructor
+  · constructor
+    · exact hm.1
+    · intro v' hv' h_le
+      have := by apply hm.2  hv'  h_le
+      exact le_antisymm h_le this
+  · rintro y ⟨hy_in, hy_max⟩
+    have h_total : m ≤ y ∨ y ≤ m := by
+      by_cases eq : m = y
+      · left; rw [eq]
+      · apply h_chain h_cond hm.1 hy_in eq
+    cases h_total with
+    | inl h_le =>
+      symm
+      have := hm.2 hy_in h_le
+      exact le_antisymm h_le this
+    | inr h_le =>
+      apply hy_max m hm.1 h_le
 
+theorem lemma_3_1_2 (u : Vertex) (d : Degree) :
+     (u = 1 ∧ d.a ≠ d.b) →
+      ∃! v, IsMaximalIn v (Ad u d) := by sorry
 
-theorem lemma_3_1_b (a : ℕ) :
+theorem lemma_3_1_3 (a : ℕ) :
     -- 第二部分：d = (a, a) 且 u = 1 的情况
     let S := Ad 1 (Degree.mk a a)
     { v | IsMaximalIn v S } = {(s0*s1)^a , (s1*s0)^a } := by
@@ -95,8 +193,6 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) :
 
   ·
     sorry
-
--- ... (前文代码保持不变) ...
 
 -- 辅助引理：Ad u d 中的元素必然在 Ad 1 d 中
 lemma Ad_subset_Ad_one (u : Vertex) (d : Degree) (v : Vertex) (h : v ∈ Ad u d) : v ∈ Ad 1 d := by
