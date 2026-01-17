@@ -39,7 +39,6 @@ lemma alternating_chain (s : Fin 2) (n : ℕ) :
         <;> exact ih _
 
 def reducedWord (g : D∞) : List (Fin 2) :=
-  --let l : List (Fin 2) :=
     match g with
     | r k =>
       let k_int : ℤ := k
@@ -53,7 +52,6 @@ def reducedWord (g : D∞) : List (Fin 2) :=
         alternating 1 (2 * k_int.natAbs - 1)
       else
         alternating 0 (2 * k_int.natAbs + 1)
-  --l.map M.toCoxeterSystem.simple
 
 def listToGroup (l : List (Fin 2)) : D∞ :=
   (l.map f).prod
@@ -72,6 +70,7 @@ lemma alternating_add_two (s : Fin 2) (n : ℕ) :
 lemma h_s0s1 : f 0 * f 1 = r (1 : ℤ) := by
   simp [f, s0, s1, sr_mul_sr]
 
+@[simp]
 lemma alternating_prod_even (n : ℕ) (s : Fin 2) :
     listToGroup (alternating s (2 * n)) = if s = 0 then r (n : ℤ) else r (-(n : ℤ)) := by
   induction n generalizing s with
@@ -87,7 +86,7 @@ lemma alternating_prod_even (n : ℕ) (s : Fin 2) :
           Fin.mk_one, Int.reduceNeg, Fin.zero_eta] at *
         simp_rw [ih]
         simp [f, s0, s1, add_comm, sub_eq_add_neg]
-
+@[simp]
 lemma alternating_prod_odd (n : ℕ) (s : Fin 2) :
     listToGroup (alternating s (2 * n + 1)) =
     if s = 0 then sr (-(n : ℤ)) else sr (n + 1 : ℤ) := by
@@ -106,6 +105,7 @@ lemma alternating_prod_odd (n : ℕ) (s : Fin 2) :
           sr.injEq, zero_add, Int.reduceNeg, add_comm]
       rw [add_comm]
 
+@[simp]
 lemma h_wp : ∀ l, cs.wordProd l = listToGroup l := by
   intro l; induction l with
   | nil => rfl
@@ -211,14 +211,14 @@ def explicit_length : D∞ → ℕ
   else
     2 * k.natAbs + 1
 
-lemma explicit' : explicit_length 1 = 0 := by
+lemma ex_length_one : explicit_length 1 = 0 := by
   rfl
 
 -- 这证明了 explicit_length 满足三角不等式的一半，也即 Lipschtiz 性质
 lemma explicit_length_mul_le (i : Fin 2) (g : D∞) :
     explicit_length (f i * g) ≤ explicit_length g + 1 := by
   fin_cases i
-  · -- Case: multiplying by s0 (f 0)
+  · -- multiplying by s0 (f 0)
     simp only [f, s0]
     cases g with
     | r k =>
@@ -295,7 +295,7 @@ lemma cs_length_ge_explicit (g : D∞) : explicit_length g ≤ ℓ g := by
   have h_bound (L : List (Fin 2)) : explicit_length (cs.wordProd L) ≤ L.length := by
     induction L with
     | nil =>
-      simp only [wordProd_nil, length_nil, nonpos_iff_eq_zero, explicit' ]
+      simp only [wordProd_nil, length_nil, nonpos_iff_eq_zero, ex_length_one ]
     | cons i L ih =>
       simp only [List.length_cons, CoxeterSystem.wordProd_cons]
       have h_simple : cs.simple i = f i := by
@@ -380,15 +380,11 @@ lemma reducedWord_is_reduced (g : D∞) : cs.IsReduced (reducedWord g) := by
   rw [CoxeterSystem.IsReduced]
   rw [reducedWord_correct g]
   rw [length_eq g]
-
 @[simp]
 theorem length_r (k : ℤ) : ℓ (r k) = 2 * k.natAbs := by
   rw [length_eq (r k)]
   dsimp [reducedWord]
-  split_ifs with h
-  · -- k ≥ 0 情况
-    rw [list_length]
-  · -- k < 0 情况
+  split_ifs with h <;>
     rw [list_length]
 
 @[simp]

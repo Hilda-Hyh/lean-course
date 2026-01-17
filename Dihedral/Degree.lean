@@ -17,7 +17,7 @@ def α1 : Root := ⟨0, 1, Or.inr rfl⟩
 -- 根的长度定义为 a + b
 def Root.length (α : Root) : ℕ := α.a + α.b
 
-lemma lemma_2_1_1 (u : D∞) : cs.length u = cs.length u⁻¹ :=
+lemma lemma_2_1_1 (u : D∞) : ℓ u = ℓ u⁻¹ :=
   (cs.length_inv u).symm
 
 lemma lemma_2_1_3 (u v : D∞) : ℓ (u * v) ≤ ℓ u + ℓ v :=
@@ -60,6 +60,16 @@ instance : Add Degree where
 instance : Zero Degree where
   zero := ⟨0, 0⟩
 
+-- 定义标量乘法
+def Degree.scale (n : ℕ) (d : Degree) : Degree :=
+  ⟨n * d.a, n * d.b⟩
+
+instance : HMul ℕ Degree Degree where
+  hMul := Degree.scale
+
+def Degree.sub (b d2 : Degree) : Degree :=
+  ⟨b.a - d2.a, b.b - d2.b⟩
+
 @[ext]
 theorem Degree.ext {d1 d2 : Degree} (h0 : d1.a = d2.a) (h1 : d1.b = d2.b) : d1 = d2 := by
   cases d1; cases d2
@@ -99,11 +109,15 @@ def getDegree : D∞ → Degree
     let k := i.natAbs
     ⟨k, k⟩
   | .sr i =>
-    let k := i.natAbs
+    let k : ℤ := i
     if k ≥ 0 then
       if i = 0 then ⟨1, 0⟩ else ⟨i.natAbs - 1, i.natAbs⟩
     else
       ⟨i.natAbs + 1, i.natAbs⟩
+
+@[simp]
+lemma getDegree_one : getDegree (1 : D∞) = ⟨0, 0⟩ := by
+      rfl
 
 def Root.toDegree (α : Root) : Degree :=⟨α.a, α.b⟩
 
@@ -122,7 +136,7 @@ example : s_α α0 = s0 := by
   simp [α0, s_α, alternating, listToGroup, f]
 
 theorem length_root_reflection (α : Root) :
-    cs.length (s_α α) = α.a + α.b := by
+    ℓ (s_α α) = α.a + α.b := by
   rw [s_α]
   split_ifs with h
   <;>simp [length_alternating]
@@ -154,13 +168,13 @@ inductive HasChain : Vertex → Vertex → Degree → Prop where
   | step {u v w : Vertex} {d : Degree} {α : Root} :
       HasChain u v d → IsEdge v w α → HasChain u w (d + α.toDegree)
 
--- 递增链：在每一步步进时增加 cs.length w > cs.length v 的判断
+-- 递增链：在每一步步进时增加 ℓ w > ℓ v 的判断
 inductive HasIncreasingChain : Vertex → Vertex → Degree → Prop where
   | refl (u : Vertex) : HasIncreasingChain u u 0
   | step {u v w : Vertex} {d : Degree} {α : Root} :
       HasIncreasingChain u v d →
       IsEdge v w α →
-      (cs.length v < cs.length w) →
+      (ℓ v < ℓ w) →
       HasIncreasingChain u w (d + α.toDegree)
 
 -- 如果存在任意度数的递增链，则 u < v
@@ -168,13 +182,13 @@ def Lt (u v : Vertex) : Prop :=
   ∃ d : Degree, HasIncreasingChain u v d ∧ u ≠ v
 
 lemma chain_length_lt {u v : Vertex} {d : Degree} (h : HasIncreasingChain u v d) :
-    cs.length u ≤ cs.length v := by
+    ℓ u ≤ ℓ v := by
   induction h with
   | refl => exact le_refl _
   | step _ _ h_lt ih => exact le_of_lt (lt_of_le_of_lt ih h_lt)
 
 lemma chain_length_lt_strict {u v : Vertex} {d : Degree} (h : HasIncreasingChain u v d)
-    (hne : u ≠ v) : cs.length u < cs.length v := by
+    (hne : u ≠ v) : ℓ u < ℓ v := by
   induction h with
   | refl => contradiction
   | step h_chain h_edge h_lt ih =>
@@ -196,14 +210,14 @@ lemma Lt_trans {u v w} (huv : Lt u v) (hvw : Lt v w) : Lt u w := by
     | step hc2_prev edge len_lt =>
       simp only [← add_assoc]
       exact HasIncreasingChain.step (concat hc1 hc2_prev) edge len_lt
-  termination_by cs.length z
+  termination_by ℓ z
   use d1 + d2
   constructor
   · exact concat huv.1 hvw.1
   · intro h_eq
     have l1 := chain_length_lt_strict huv.1 huv.2
     have l2 := chain_length_lt_strict hvw.1 hvw.2
-    have l3 : cs.length u < cs.length w := lt_trans l1 l2
+    have l3 : ℓ u < ℓ w := lt_trans l1 l2
     rw [h_eq] at l3
     exact lt_irrefl _ l3
 
@@ -228,8 +242,7 @@ lemma Lt_iff_le_not_ge (a b : Vertex) :
     · exact hab
     · exfalso
       apply h_not_ge
-      right
-      rfl
+      exact Or.inr rfl
 
 instance : PartialOrder D∞ where
   le u v := (Lt u v) ∨ (u = v)
@@ -252,7 +265,6 @@ instance : PartialOrder D∞ where
       have contra := lt_trans l1 l2
       exact lt_irrefl _ contra
     · exact h.symm
-
 
 lemma exists_root_eq_sr (k : ℤ) : ∃ α : Root, s_α α = sr k := by
   by_cases h : k > 0
@@ -309,7 +321,7 @@ lemma exists_root_eq_sr (k : ℤ) : ∃ α : Root, s_α α = sr k := by
     simpa using this
 
 lemma inv_mul_is_sr_of_parity_diff (u v : Vertex)
-    (h_parity : (cs.length u) % 2 ≠ (cs.length v) % 2) :
+    (h_parity : (ℓ u) % 2 ≠ (ℓ v) % 2) :
     ∃ k : ℤ, u⁻¹ * v = sr k := by
   -- D∞ 中元素要么是 r k 要么是 sr k
   let g := u⁻¹ * v
@@ -317,24 +329,24 @@ lemma inv_mul_is_sr_of_parity_diff (u v : Vertex)
   | sr k => use k
   | r k =>
     exfalso
-    have h_len_g : cs.length g % 2 = 0 := by
+    have h_len_g : ℓ g % 2 = 0 := by
       rw [hg, length_r]
       omega
-    have h_hom : cs.length g % 2 = (cs.length u + cs.length v) % 2 := by
+    have h_hom : ℓ g % 2 = (ℓ u + ℓ v) % 2 := by
       dsimp [g]
       rw [cs.length_mul_mod_two, cs.length_inv]
     rw [h_hom] at h_len_g
     rw [Nat.add_mod] at h_len_g
-    have hu_mod : cs.length u % 2 < 2 := Nat.mod_lt _ (by norm_num : 0 < 2)
-    have hv_mod : cs.length v % 2 < 2 := Nat.mod_lt _ (by norm_num : 0 < 2)
-    interval_cases cs.length u % 2 <;> interval_cases cs.length v % 2 <;>
+    have hu_mod : ℓ u % 2 < 2 := Nat.mod_lt _ (by norm_num : 0 < 2)
+    have hv_mod : ℓ v % 2 < 2 := Nat.mod_lt _ (by norm_num : 0 < 2)
+    interval_cases ℓ u % 2 <;> interval_cases ℓ v % 2 <;>
     omega
 
-lemma lt_of_succ_length (u v : Vertex) (h : cs.length v = cs.length u + 1) : u < v := by
+lemma lt_of_succ_length (u v : Vertex) (h : ℓ v = ℓ u + 1) : u < v := by
   -- 确定 u⁻¹v 是反射 sr k
-  have h_parity : (cs.length u) % 2 ≠ (cs.length v) % 2 := by
+  have h_parity : (ℓ u) % 2 ≠ (ℓ v) % 2 := by
     rw [h, Nat.add_mod]
-    match (cs.length u) % 2 with
+    match (ℓ u) % 2 with
     | 0 => simp
     | 1 => simp
     | x =>
@@ -356,7 +368,7 @@ lemma lt_of_succ_length (u v : Vertex) (h : cs.length v = cs.length u + 1) : u <
   have h_edge : IsEdge u v α := by
     dsimp [IsEdge]
     rw [hα, ←hk, mul_inv_cancel_left]
-  have h_len_lt : cs.length u < cs.length v := by rw [h]; exact Nat.lt_succ_self _
+  have h_len_lt : ℓ u < ℓ v := by rw [h]; exact Nat.lt_succ_self _
   let chain := HasIncreasingChain.step (HasIncreasingChain.refl u) h_edge h_len_lt
   have h_ne : u ≠ v := by
     intro eq
@@ -365,15 +377,15 @@ lemma lt_of_succ_length (u v : Vertex) (h : cs.length v = cs.length u + 1) : u <
   use (0 + α.toDegree)
 
 
-theorem bruhat_iff_length_less (u v : Vertex) :
-    u < v ↔ cs.length u < cs.length v := by
+theorem lemma_2_3 (u v : Vertex) :
+    u < v ↔ ℓ u < ℓ v := by
   constructor
   · intro h
     rcases h with ⟨d, chain, ne⟩
     exact chain_length_lt_strict chain ne
   · intro h_lt
-    let k := cs.length v - cs.length u
-    have h_diff : cs.length v = cs.length u + k := (Nat.add_sub_of_le (le_of_lt h_lt)).symm
+    let k := ℓ v - ℓ u
+    have h_diff : ℓ v = ℓ u + k := (Nat.add_sub_of_le (le_of_lt h_lt)).symm
     generalize hn : k = n
     rw [hn] at h_diff
     induction n generalizing v with
@@ -387,7 +399,7 @@ theorem bruhat_iff_length_less (u v : Vertex) :
         exact lt_of_succ_length u v h_diff
        else
       -- 递归情况：长度差 > 1
-      have h_len_v_pos : cs.length v > 0 := by
+      have h_len_v_pos : ℓ v > 0 := by
         rw [h_diff]
         have : n + 1 ≥ 1 := Nat.le_add_left 1 n
         omega
@@ -397,20 +409,20 @@ theorem bruhat_iff_length_less (u v : Vertex) :
         exact lt_irrefl 0 h_len_v_pos
       obtain ⟨i, h_descent⟩ := cs.exists_rightDescent_of_ne_one h_ne_one
       let w := v * cs.simple i
-      --∃w，使得 cs.length w + 1 = cs.length v，回到归纳
-      have hi : cs.length w = cs.length v - 1 := by
+      --∃w，使得 ℓ w + 1 = ℓ v，回到归纳
+      have hi : ℓ w = ℓ v - 1 := by
         rw [cs.isRightDescent_iff] at h_descent
         exact Nat.eq_sub_of_add_eq h_descent
-      have h_len_w : cs.length w = cs.length v - 1 := hi
+      have h_len_w : ℓ w = ℓ v - 1 := hi
       -- 证明 u < w
-      have h_u_lt_w : cs.length u < cs.length w := by
+      have h_u_lt_w : ℓ u < ℓ w := by
         rw [h_len_w, h_diff]
         have : n ≥ 1 := Nat.pos_of_ne_zero hn
         omega
-      have h_diff_w : cs.length w = cs.length u + n := by
+      have h_diff_w : ℓ w = ℓ u + n := by
         rw [h_len_w, h_diff]
         simp
-      have hk_eq_n : cs.length w - cs.length u = n := by
+      have hk_eq_n : ℓ w - ℓ u = n := by
         rw [h_diff_w]
         simp
       have h_u_le_w : u < w :=ih w h_u_lt_w h_diff_w hk_eq_n
@@ -419,3 +431,90 @@ theorem bruhat_iff_length_less (u v : Vertex) :
         rw [h_len_w]
         omega
       exact Lt_trans h_u_le_w h_w_lt_v
+notation "φ" => getDegree
+-- This connects the Root structure to the φ function.
+lemma φ_s_alpha_eq (α : Root) : φ (s_α α) = α.toDegree := by
+  simp only [s_α, Root.toDegree]
+  split_ifs with h_gt
+  · -- a = b + 1
+    rcases α.sub_one with (h | h)
+    · -- a = b + 1
+      rw [h, succ_eq_add_one]
+      rw [show α.b + 1 + α.b =2 * α.b + 1  by ring, alternating_prod_odd]
+      simp only [getDegree, Fin.isValue, ↓reduceIte, Int.neg_nonneg, Int.natCast_nonpos_iff,
+        neg_eq_zero, cast_eq_zero, Int.natAbs_neg, Int.natAbs_natCast, ite_eq_right_iff]
+      intro h'
+      simp [h']
+    · -- b = a + 1, contradicts a > b
+      linarith
+  · --  b = a + 1
+    rcases α.sub_one with (h | h)
+    · linarith
+    · rw [h, succ_eq_add_one, ← add_assoc]
+      rw [show α.a + α.a + 1 =2 * α.a + 1  by ring, alternating_prod_odd]
+      simp only [one_ne_zero, reduceIte]
+      have h_nezero : (α.a : ℤ) + 1 ≠ 0 := by omega
+      have h_pos : (α.a : ℤ) + 1 ≥ 0 := by linarith
+      simp [h_pos, getDegree, h_nezero]
+      omega
+
+lemma getDegree_r (k : ℤ) : φ (r k) = ⟨k.natAbs, k.natAbs⟩ := rfl
+
+lemma getDegree_sr (k : ℤ) :
+    φ (sr k) =
+    if k ≥ 0 then
+      if k = 0 then ⟨1, 0⟩ else ⟨k.natAbs - 1, k.natAbs⟩
+    else
+      ⟨k.natAbs + 1, k.natAbs⟩ := rfl
+
+-- lemma：度数加法奇偶性
+lemma degree_add_parity (g h : D∞) :
+    ∃ (r s : ℕ),
+      (φ g).a + (φ h).a = (φ (g * h)).a + 2 * r ∧
+      (φ g).b + (φ h).b = (φ (g * h)).b + 2 * s := by
+--对ZMod2中奇偶进行讨论
+  sorry
+
+-- Main Lemma 2.5 Proof
+lemma lemma_2_5_a (u v : Vertex) (d : Degree) :
+    HasChain u v d →
+    ∃ (r s : ℕ), d.a = (φ (u⁻¹ * v)).a + 2 * r ∧
+                 d.b = (φ (u⁻¹ * v)).b + 2 * s := by
+  intro h
+  induction h with
+  | refl =>-- u = v, d = 0
+    use 0, 0
+    rw [inv_mul_cancel u, getDegree_one]
+    simp only [mul_zero, add_zero]
+    exact eq_zero_of_add_eq_zero rfl
+  | step h_chain h_edge ih =>
+    rename_i v' w d' α
+    rcases ih with ⟨r',s', h0', h1'⟩
+    let g := u⁻¹ * v'
+    let t := s_α α
+    have h_gw : u⁻¹ * w = g * t := by
+      simp only [IsEdge] at h_edge
+      rw [h_edge, mul_assoc]
+    obtain ⟨k, m, hk, hm⟩ := degree_add_parity g t
+    have h_deg_t : φ t = α.toDegree := φ_s_alpha_eq α
+    use r' + k,s' + m
+    constructor
+    · -- for component a
+      dsimp [Add.add, Root.toDegree]
+      change d'.a + α.a = (φ (u⁻¹ * w)).a + 2 * (r' + k)
+      rw [h0', h_gw, show α.a = (α.toDegree).a by rfl]
+      rw [← h_deg_t]
+      linarith [hk]
+    · dsimp [Add.add, Root.toDegree]
+      change d'.b + α.b = (φ (u⁻¹ * w)).b + 2 * (s' + m)
+      rw [h1', h_gw, show α.b = (α.toDegree).b by rfl]
+      simp [← h_deg_t]
+      linarith [hm]
+
+
+lemma lemma_2_5_b (u v : Vertex) (d : Degree) (h : HasChain u v d) :
+    φ (u⁻¹ * v) ≤ d := by
+  obtain ⟨r, s, hr, hs⟩ := lemma_2_5_a u v d h
+  constructor
+  · rw [hr]; exact Nat.le_add_right _ _
+  · rw [hs]; exact Nat.le_add_right _ _

@@ -4,7 +4,7 @@ import Dihedral.Length
 import Dihedral.Degree
 
 open CoxeterSystem DihedralGroup Nat
-
+notation "gD" => getDegree
 def CanReachWithin (u v : Vertex) (d : Degree) : Prop :=
   exists d', HasChain u v d' ∧ d' ≤ d
 
@@ -13,35 +13,9 @@ def CurveNeighborhood (u : Vertex) (d : Degree) : Set Vertex :=
   { v | CanReachWithin u v d ∧
         ∀ v' : Vertex, CanReachWithin u v' d → Lt v v' → v = v' }
 
--- 定义标量乘法
-def Degree.scale (n : ℕ) (d : Degree) : Degree :=
-  ⟨n * d.d0, n * d.d1⟩
-
-instance : HMul ℕ Degree Degree where
-  hMul := Degree.scale
-
--- 定义度数减法（如果 d1 ≥ d2
-def Degree.sub (d1 d2 : Degree) : Degree :=
-  ⟨d1.d0 - d2.d0, d1.d1 - d2.d1⟩
-
-lemma lemma_2_5_a (u v : Vertex) (d : Degree) :
-    HasChain u v d →
-    ∃ (r s : ℕ), d.d0 = (getDegree (u⁻¹ * v)).d0 + 2 * r ∧
-                 d.d1 = (getDegree (u⁻¹ * v)).d1 + 2 * s := by
-  intro h
-  sorry
-
-
-lemma lemma_2_5_b (u v : Vertex) (d : Degree) (h : HasChain u v d) :
-    getDegree (u⁻¹ * v) ≤ d := by
-  obtain ⟨r, s, hr, hs⟩ := lemma_2_5_a u v d h
-  constructor
-  · rw [hr]; exact Nat.le_add_right _ _
-  · rw [hs]; exact Nat.le_add_right _ _
-
 -- 定义集合 A_d(u)
 def Ad (u : Vertex) (d : Degree) : Set Vertex :=
-  { v | cs.length (u * v) = cs.length u + cs.length v ∧ getDegree v ≤ d }
+  { v | cs.length (u * v) = cs.length u + cs.length v ∧ gD v ≤ d }
 
 -- 定义极大元 (Maximal Element)
 def IsMaximalIn (v : Vertex) (S : Set Vertex) : Prop :=
@@ -52,7 +26,7 @@ def maximalElements (S : Set Vertex) : Set Vertex :=
   { v | IsMaximalIn v S }
 
 theorem lemma_3_1 (u : Vertex) (d : Degree) :
-    (u ≠ 1 ∨ (u = 1 ∧ d.d0 ≠ d.d1)) →
+    (u ≠ 1 ∨ (u = 1 ∧ d.a ≠ d.b)) →
       ∃! v, IsMaximalIn v (Ad u d) := by
   intro h_cond
   rcases h_cond with (h_ne_one | ⟨h_eq_one, h_d_neq⟩)
@@ -68,17 +42,17 @@ theorem lemma_3_1_b (a : ℕ) :
   sorry
 
 def root_from_degree (d : Degree) : Root :=
-  if d.d0 > d.d1 then
-    ⟨d.d1 + 1, d.d1, Or.inl rfl⟩
+  if d.a > d.b then
+    ⟨d.b + 1, d.b, Or.inl rfl⟩
   else
-    ⟨d.d0, d.d0 + 1, Or.inr rfl⟩
+    ⟨d.a, d.a + 1, Or.inr rfl⟩
 
 def s_alpha_d (d : Degree) : Vertex := s_α (root_from_degree d)
 
 def s0s1_pow (a : ℕ) : Vertex := listToGroup (alternating 0 (2 * a))
 def s1s0_pow (a : ℕ) : Vertex := listToGroup (alternating 1 (2 * a))
 
--- 结论 A: 证明对于恒等元，曲线邻域就是 Ad(1) 的极大元集合
+-- 结论 A: 证明对于单位元1，曲线邻域就是 Ad(1) 的极大元集合
 theorem curve_neighborhood_eq_max_Ad_identity (d : Degree) :
     CurveNeighborhood 1 d = { v | IsMaximalIn v (Ad 1 d) } := by
   sorry
@@ -86,19 +60,19 @@ theorem curve_neighborhood_eq_max_Ad_identity (d : Degree) :
 -- 结论 B: Theorem 3.3 的具体计算公式
 theorem theorem_3_3 (d : Degree) :
     CurveNeighborhood 1 d =
-      if d.d0 ≠ d.d1 then
+      if d.a ≠ d.b then
         { s_alpha_d d }
       else
-        { s0s1_pow d.d0, s1s0_pow d.d0 } := by
+        { s0s1_pow d.a, s1s0_pow d.a } := by
   sorry
 
 -- Lemma 3.4: 关于 u, z ∈ Ad(1) 和 v ∈ Γd(u) 的性质
-lemma lemma_3_4_a (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
+theorem lemma_3_4_a (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
     (hz : z ∈ Ad 1 d) (hv : v ∈ CurveNeighborhood u d) :
-    cs.length (u * z) ≤ cs.length v ∧ getDegree (u⁻¹ * v) ≤ d := by
+    cs.length (u * z) ≤ cs.length v ∧ gD (u⁻¹ * v) ≤ d := by
   sorry
 
-lemma lemma_3_4_b (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
+theorem lemma_3_4_b (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
     (hz : z ∈ CurveNeighborhood 1 d) (hv : v ∈ CurveNeighborhood u d) :
     cs.length (u⁻¹ * v) ≤ cs.length z := by
   sorry
@@ -123,15 +97,75 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) :
   ·
     sorry
 
-theorem main_theorem (u : Vertex) (d : Degree) (hd : d ≠ 0) :
+-- ... (前文代码保持不变) ...
+
+-- 辅助引理：Ad u d 中的元素必然在 Ad 1 d 中
+lemma Ad_subset_Ad_one (u : Vertex) (d : Degree) (v : Vertex) (h : v ∈ Ad u d) : v ∈ Ad 1 d := by
+  rw [Ad] at *
+  simp only [one_mul, cs.length_one, zero_add, Set.mem_setOf_eq]
+  exact And.imp_left (fun a ↦ trivial) h
+
+-- 辅助引理：有限偏序集中，任意元素都小于等于某个极大元
+lemma exists_max_ge_in_Ad (u : Vertex) (d : Degree) (z : Vertex) (hz : z ∈ Ad u d) :
+    ∃ w, IsMaximalIn w (Ad u d) ∧ z ≤ w := by
+  sorry
+
+-- 辅助引理：如果 w ∈ Ad u d，则 u * w 在 d 范围内可达
+-- 这联系了 Ad (基于长度和度数) 和 CurveNeighborhood (基于链)
+lemma reachable_of_Ad (u : Vertex) (d : Degree) (w : Vertex) (h : w ∈ Ad u d) :
+    CanReachWithin u (u * w) d := by
+  sorry
+
+-- 如果 x, y ∈ Ad u d, 则 x ≤ y ↔ u * x ≤ u * y
+lemma mul_le_mul_left_of_Ad (u : Vertex) (d : Degree) (x y : Vertex)
+    (hx : x ∈ Ad u d) (hy : y ∈ Ad u d) :
+    x ≤ y ↔ u * x ≤ u * y := by
+  sorry
+
+lemma h_maximal_in_gamma : ∀ v' : Vertex,
+    CanReachWithin u v' d → Lt (u * w) v' → (u * w) = v' := by
+  intro v' h_reach_v' h_lt
+  sorry
+
+theorem main_theorem (u : Vertex) (d : Degree) :
     CurveNeighborhood u d = { v | ∃ w, IsMaximalIn w (Ad u d) ∧ v = u * w } := by
   apply Set.ext
   intro v
   constructor
-  · -- 方向 1: v ∈ Ω_d(u) → v = u * w 其中 w 是 Ad(u) 的极大元
+  · -- (⊆): v ∈ Ω_d(u) → v = u * w (w 为极大元)
     intro hv
-    have h_in_Ad : (u⁻¹ * v) ∈ Ad u d := lemma_3_5 u v d hv
-    sorry
-  · -- 方向 2: v = u * w (w 为极大元) → v ∈ Ω_d(u)
+    -- 根据 Lemma 3.5, z = u⁻¹v ∈ Ad u d
+    have h_z_in_Ad : (u⁻¹ * v) ∈ Ad u d := lemma_3_5 u v d hv
+    let z := u⁻¹ * v
+    obtain ⟨w, hw_max, h_z_le_w⟩ := exists_max_ge_in_Ad u d z h_z_in_Ad
+    have hw_in_Ad1 : w ∈ Ad 1 d := Ad_subset_Ad_one u d w hw_max.1
+    -- 应用 Lemma 3.4.a 得到长度不等式
+    have h_len_ineq := lemma_3_4_a u d w v hw_in_Ad1 hv
+    rcases h_len_ineq with ⟨h_len_uw_le_v, _⟩
+    have h_len_v : cs.length v = cs.length u + cs.length z := by
+      have : v = u * z := by simp [z]
+      rw [this]
+      exact h_z_in_Ad.1
+    have h_len_uw : cs.length (u * w) = cs.length u + cs.length w := hw_max.1.1
+    rw [h_len_v, h_len_uw] at h_len_uw_le_v
+    have h_len_w_le_z : cs.length w ≤ cs.length z := Nat.le_of_add_le_add_left h_len_uw_le_v
+    have h_z_eq_w : z = w := by
+      rcases h_z_le_w with h|h'
+      · exfalso
+        have : z < w := h
+        rw [lemma_2_3] at this
+        linarith
+      · exact h'
+    use w
+    constructor
+    · exact hw_max
+    · simp only [z] at h_z_eq_w
+      rw [← h_z_eq_w, mul_inv_cancel_left]
+  · --  (⊇): v = u * w (w 为极大元) → v ∈ Ω_d(u)
     rintro ⟨w, hw_max, rfl⟩
-    sorry
+    have h_reach : CanReachWithin u (u * w) d := reachable_of_Ad u d w hw_max.1
+    rw [CurveNeighborhood]
+    simp only [Set.mem_setOf_eq]
+    constructor
+    · exact h_reach
+    · exact h_maximal_in_gamma
