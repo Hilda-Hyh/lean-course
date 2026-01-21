@@ -19,7 +19,7 @@ def alternating (start : Fin 2) (n : ℕ) : List (Fin 2) :=
   match n with
   | 0 => []
   | k + 1 => start :: alternating (if start = 0 then 1 else 0) k
-
+--后面发现可用alternatingWord替代
 -- 验证交替列表
 lemma alternating_chain (s : Fin 2) (n : ℕ) :
     List.IsChain (· ≠ ·) (alternating s n) := by
@@ -201,7 +201,7 @@ lemma list_length (s : Fin 2) (n : ℕ) : (alternating s n).length = n := by
   | succ k ih =>
       simp [alternating, ih]
 
--- 辅助函数：定义 D∞ 中元素的预期长度
+-- 辅助函数：定义 D∞ 中元素的预期长度，仅在证明ℓ时使用
 def explicit_length : D∞ → ℕ
 | r k => 2 * k.natAbs
 | sr k =>
@@ -329,7 +329,7 @@ lemma explicit_length_alternating (s : Fin 2) (n : ℕ) :
       omega
   | n + 2 => omega
 
--- 最终证明：alternating s n 的长度确实为 n
+-- 最终：alternating s n 的长度确实为 n
 lemma alternating_isReduced (s : Fin 2) (n : ℕ) :
     cs.IsReduced (alternating s n) := by
   dsimp [CoxeterSystem.IsReduced]
@@ -380,6 +380,7 @@ lemma reducedWord_is_reduced (g : D∞) : cs.IsReduced (reducedWord g) := by
   rw [CoxeterSystem.IsReduced]
   rw [reducedWord_correct g]
   rw [length_eq g]
+
 @[simp]
 theorem length_r (k : ℤ) : ℓ (r k) = 2 * k.natAbs := by
   rw [length_eq (r k)]
@@ -395,11 +396,6 @@ theorem length_sr (k : ℤ) : ℓ (sr k) =
   split_ifs with h1<;>
     rw [list_length]
 
-/--
-D∞ 的归纳原理：
-如果性质 P 对单位元成立，且对任意 g，由 P g 可推出 P (g * s0) 和 P (g * s1)，
-则 P 对 D∞ 中的所有元素成立。
--/
 theorem D_induction {P : D∞ → Prop}
     (h1 : P 1)
     (h_s0 : ∀ g, P g → P (g * s0))
@@ -410,7 +406,6 @@ theorem D_induction {P : D∞ → Prop}
   generalize reducedWord g = l
   induction l using List.reverseRecOn with
   | nil =>
-    -- 空列表对应单位元 1
     simp only [h_wp, listToGroup, List.map_nil, List.prod_nil]
     exact h1
   | append_singleton xs i ih =>
@@ -431,7 +426,7 @@ theorem D_induction {P : D∞ → Prop}
       simp_all only [h_wp]
       exact ih
 
-
+--alternating归纳
 theorem induction_on_alternating {P : D∞ → Prop}
     (h1 : P 1)
     (h_step : ∀ (s : Fin 2) (n : ℕ),
@@ -465,25 +460,6 @@ theorem induction_on_alternating {P : D∞ → Prop}
     · exact h_all _ 1
     · exact h_all _ 0
 
--- 定义一个简单的结构来存储计数
-structure GenCount where
-  a : ℕ -- s0 的数量
-  b : ℕ -- s1 的数量
-  deriving Repr, DecidableEq
-
--- 计算一个列表中 s0 (0) 和 s1 (1) 的数量
-def countList (l : List (Fin 2)) : GenCount :=
-  { a := l.count 0, b := l.count 1 }
-
--- 定义映射 φ：计算群元素 reducedWord 中的生成元数量
-noncomputable def Η (g : D∞) : GenCount :=
-  countList (reducedWord g)
-
--- 核心引理：任何元素都等于其 reducedWord 对应的列表乘积
--- (这个你之前的 reducedWord_correct 已经证明了，这里为了方便改写引用)
-lemma eq_list_prod (g : D∞) : g = listToGroup (reducedWord g) :=
-  by rw [← h_wp, reducedWord_correct g]
-
 --D∞ 的 Alternating 分类原理：
 theorem alternating_cases {P : D∞ → Prop}
     (h : ∀ (s : Fin 2) (n : ℕ), P (listToGroup (alternating s n))) :
@@ -502,15 +478,6 @@ theorem alternating_cases {P : D∞ → Prop}
     split_ifs
     · apply h 1 (2 * k.natAbs - 1)
     · apply h 0 (2 * k.natAbs + 1)
-
-lemma Fin_2_induction {P : Fin 2 → Prop}
-    (h0 : P 0)
-    (h1 : P 1) :
-    ∀ s : Fin 2, P s := by
-  intro s
-  fin_cases s
-  · exact h0
-  · exact h1
 
 lemma n_mod_2_induction {P : ℕ → Prop}
   (h0 : ∀ k : ℕ, P (2 * k))

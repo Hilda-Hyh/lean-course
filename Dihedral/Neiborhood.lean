@@ -23,7 +23,7 @@ def Ad (u : Vertex) (d : Degree) : Set Vertex :=
 -- 定义集合 S 中的极大元子集
 def maximalElements (S : Set Vertex) : Set Vertex :=
   { v | IsMaximalIn v S }
-
+--欲证明有限集
 lemma h_len_bound : ∀ v ∈ Ad u d, ℓ v ≤ d.a + d.b + 1 := by
     intro v hv
     obtain ⟨h, h_deg⟩ := hv

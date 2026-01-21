@@ -533,26 +533,3 @@ lemma lemma_2_5_b (u v : Vertex) (d : Degree) (h : HasChain u v d) :
   constructor
   · rw [hr]; exact Nat.le_add_right _ _
   · rw [hs]; exact Nat.le_add_right _ _
-
-
-open CoxeterSystem DihedralGroup List
-
--- 1. 定义 Ray：从 s 开始，长度为 n 的交替乘积
-def ray (s : Fin 2) (n : ℕ) : D∞ := listToGroup (alternating s n)
-
--- 辅助：Fin 2 的加法即“翻转”，用于计算下一个生成元
--- 注意：Fin 2 自动模 2，所以 n : ℕ 会被自动转换
-instance : Add (Fin 2) where
-  add a b := a + b
-
-
-
-
-theorem ray_induction_on {P : D∞ → Prop} (s : Fin 2)
-    (base : P (ray s 0)) -- 证明 P(1)
-    (step : ∀ n, P (ray s n) → P (ray s (n + 1))) : -- 归纳步：右边加一个生成元
-    ∀ n, P (ray s n) := by
-  intro n
-  induction n with
-  | zero => exact base
-  | succ n ih => exact step n ih
