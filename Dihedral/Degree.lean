@@ -103,6 +103,9 @@ instance : PartialOrder Degree where
     simp only [Degree.mk.injEq] at *
     exact ⟨Nat.le_antisymm h12.1 h21.1, Nat.le_antisymm h12.2 h21.2⟩
 
+@[simp]
+lemma Degreele_le_def (d1 d2 : Degree) : d1 ≤ d2 ↔ d1.a ≤ d2.a ∧ d1.b ≤ d2.b := by rfl
+
 def getDegree : D∞ → Degree
   | .r i =>
     let k := i.natAbs
@@ -478,65 +481,56 @@ lemma getDegree_alternating_odd_1 (k : ℕ) :
     simp [getDegree]
     rfl
 
-@[simp]
 lemma getDegree_r (k : ℤ) : φ (r k) = ⟨k.natAbs, k.natAbs⟩ := rfl
 
-@[simp]
-lemma getDegree_sr (k : ℤ) :
-    φ (sr k) = ⟨(k - 1).natAbs, k.natAbs⟩ := by grind[getDegree]
+lemma getDegree_sr (k : ℤ) : φ (sr k) = ⟨(k - 1).natAbs, k.natAbs⟩ := by
+  grind[getDegree]
 
-
-lemma mod2_iff_existnat (a b : ℕ) : (a ≥ b) ∧ (a : ZMod 2) = (b : ZMod 2)
-    → ∃ s : ℕ, a = b + 2 * s := by
-  rintro ⟨le, meq⟩
+lemma le_mod2_existnat {a b : ℕ} (le : a ≥ b) (meq : (a : ZMod 2) = (b : ZMod 2)) :
+    ∃ s : ℕ, a = b + 2 * s := by
   rw[ZMod.natCast_eq_natCast_iff'] at meq
   use (a-b)/2
   omega
 
 -- lemma：度数加法奇偶性
 lemma degree_add_parity (g h : D∞) :
-    ∃ (r s : ℕ),
-      (φ g).a + (φ h).a = (φ (g * h)).a + 2 * r ∧
-      (φ g).b + (φ h).b = (φ (g * h)).b + 2 * s := by
+    ∃ (r s : ℕ), (φ g).a + (φ h).a = (φ (g * h)).a + 2 * r
+               ∧ (φ g).b + (φ h).b = (φ (g * h)).b + 2 * s := by
   induction g with
   | r y =>
     induction h with
     | r x =>
-      simp [getDegree_r]
-      apply mod2_iff_existnat
-      constructor
+      simp only [getDegree_r, r_mul_r, exists_and_left, exists_and_right, and_self]
+      apply le_mod2_existnat
       · omega
       · simp; norm_cast
     | sr x =>
-      simp [getDegree_r, getDegree_sr]
+      simp only [getDegree_r, getDegree_sr, r_mul_sr, exists_and_left, exists_and_right]
       constructor
       all_goals
-      apply mod2_iff_existnat
-      constructor
+      apply le_mod2_existnat
       · omega
-      · simp
+      · simp only [cast_add, cast_natAbs, ZMod.intCast_abs_mod_two, Int.cast_sub, Int.cast_one]
         repeat rw [Int.cast_sub]
         grind
   | sr y =>
     induction h with
     | r x =>
-      simp [getDegree_sr, getDegree_r]
+      simp only [getDegree_sr, getDegree_r, sr_mul_r, exists_and_left, exists_and_right]
       constructor
       all_goals
-      apply mod2_iff_existnat
-      constructor
+      apply le_mod2_existnat
       · omega
-      · simp
+      · simp only [cast_add, cast_natAbs, ZMod.intCast_abs_mod_two, Int.cast_sub, Int.cast_one]
         repeat rw [Int.cast_add]
         try ring
     | sr x =>
-      simp[getDegree_r, getDegree_sr]
+      simp only [getDegree_sr, sr_mul_sr, getDegree_r, exists_and_left, exists_and_right]
       constructor
       all_goals
-      apply mod2_iff_existnat
-      constructor
+      apply le_mod2_existnat
       · omega
-      · simp
+      · simp only [cast_add, cast_natAbs, ZMod.intCast_abs_mod_two]
         repeat rw [Int.cast_sub]
         grind
 

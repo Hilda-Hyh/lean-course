@@ -32,30 +32,14 @@ lemma h_len_bound : ∀ v ∈ Ad u d, ℓ v ≤ d.a + d.b + 1 := by
       simp_all only [length_alternating]
       induction n using n_mod_2_induction with
       | h0 k =>
-        simp  only[getDegree_alternating] at h_deg
-        simp only [mul_mod_right, ↓reduceIte, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
-          mul_div_cancel_left₀] at h_deg
-        have : 2 * k ≤ d.a + d.b :=
-          by simpa [two_mul, Nat.add_comm] using
-              Nat.add_le_add h_deg.1 h_deg.2
-        exact Nat.le_trans this (Nat.le_succ _)
+        erw [getDegree_alternating_even, Degreele_le_def] at h_deg
+        linarith
       | h1 k =>
-        simp  only[getDegree_alternating] at h_deg
         fin_cases s
-        · simp only [mul_add_mod_self_left, mod_succ, one_ne_zero, ↓reduceIte, Fin.zero_eta,
-          Fin.isValue] at h_deg
-          have h' := by simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
-            using Nat.add_le_add h_deg.1 h_deg.2
-          rw [← two_mul, show 2 * ((1 + 2 * k) / 2) = 2 * k by omega, add_comm] at h'
-          exact Nat.le_trans h' (Nat.le_succ _)
-        · simp only [mul_add_mod_self_left, mod_succ, one_ne_zero, ↓reduceIte, Fin.mk_one,
-            Fin.isValue] at h_deg
-          have := by simpa [Nat.add_comm, Nat.add_left_comm, Nat.add_assoc]
-            using Nat.add_le_add h_deg.1 h_deg.2
-          rw [← two_mul, show 2 * ((1 + 2 * k) / 2) = 2 * k by omega] at this
-          have h' : 2 * k + 2 ≤ d.a + d.b + 1 := by omega
-          exact Nat.succ_le_succ_iff.mp <|
-            Nat.le_trans (Nat.le_succ _) (Nat.succ_le_succ h')
+        · erw [getDegree_alternating_odd_0, Degreele_le_def] at h_deg
+          linarith
+        · erw [getDegree_alternating_odd_1, Degreele_le_def] at h_deg
+          linarith
 
 lemma h_finite : (Ad u d).Finite := by
     let limit := d.a + d.b + 1
@@ -90,17 +74,20 @@ lemma h_finite : (Ad u d).Finite := by
     simpa using hfinite
 
 lemma h_nonempty : (Ad u d).Nonempty := ⟨1, ⟨by simp, by
-    simp [getDegree_one]; constructor<;> linarith⟩⟩
+    simp [getDegree_one]⟩⟩
 
-lemma  h_chain {u : Vertex} (h : u ≠ 1) : IsChain (· ≤ ·) (Ad u d) := by
+lemma h_chain {u : Vertex} (h : u ≠ 1) : IsChain (· ≤ ·) (Ad u d) := by
   intro x hx y hy hxy
   simp only
   --simp only [not_or] at h
   --obtain ⟨h1, h2⟩ := h
   obtain ⟨hv, hv'⟩ := hx
   obtain ⟨hw, hw'⟩ := hy
+
+
   change ((Lt x y) ∨ (x = y)) ∨ ((Lt y x) ∨ (y = x))
   simp [hxy, hxy.symm]
+
   sorry
 
 theorem lemma_3_1_1 (u : Vertex) (d : Degree) :
