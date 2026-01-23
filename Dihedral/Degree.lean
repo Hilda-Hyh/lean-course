@@ -2,7 +2,6 @@ import Mathlib
 import Dihedral.Basic
 import Dihedral.Length
 
-
 open Nat CoxeterSystem DihedralGroup
 
 structure Root where
@@ -458,37 +457,89 @@ lemma φ_s_alpha_eq (α : Root) : φ (s_α α) = α.toDegree := by
       simp [h_pos, getDegree, h_nezero]
       omega
 
-lemma getDegree_alternating (s : Fin 2) (n : ℕ) :
-    φ (listToGroup (alternating s n)) =
-    if n % 2 = 0 then
-      let k := n / 2
-      ⟨k, k⟩
-    else
-      if s = 0 then
-        let k := n / 2
-        ⟨k + 1, k⟩
-      else
-        let k := n / 2
-        ⟨k, k + 1⟩ := by
-  sorry
 
+lemma getDegree_alternating_even (s : Fin 2) (k : ℕ) :
+    φ (listToGroup (alternating s (2 * k))) = ⟨k, k⟩ := by
+    fin_cases s
+    all_goals
+    · simp [getDegree]
+
+lemma getDegree_alternating_odd_0 (k : ℕ) :
+    φ (listToGroup (alternating 0 (2*k + 1))) = ⟨k + 1, k⟩ := by
+    simp only [getDegree, Fin.isValue, alternating_prod_odd, ↓reduceIte, Int.neg_nonneg,
+      Int.natCast_nonpos_iff, neg_eq_zero, cast_eq_zero, Int.natAbs_neg, Int.natAbs_natCast,
+      ite_eq_right_iff]
+    intro a
+    subst a
+    rfl
+
+lemma getDegree_alternating_odd_1 (k : ℕ) :
+    φ (listToGroup (alternating 1 (2*k + 1))) = ⟨k, k + 1⟩ := by
+    simp [getDegree]
+    rfl
+
+@[simp]
 lemma getDegree_r (k : ℤ) : φ (r k) = ⟨k.natAbs, k.natAbs⟩ := rfl
 
+@[simp]
 lemma getDegree_sr (k : ℤ) :
-    φ (sr k) =
-    if k ≥ 0 then
-      if k = 0 then ⟨1, 0⟩ else ⟨k.natAbs - 1, k.natAbs⟩
-    else
-      ⟨k.natAbs + 1, k.natAbs⟩ := rfl
+    φ (sr k) = ⟨(k - 1).natAbs, k.natAbs⟩ := by grind[getDegree]
+
+
+lemma mod2_iff_existnat (a b : ℕ) : (a ≥ b) ∧ (a : ZMod 2) = (b : ZMod 2)
+    → ∃ s : ℕ, a = b + 2 * s := by
+  rintro ⟨le, meq⟩
+  rw[ZMod.natCast_eq_natCast_iff'] at meq
+  use (a-b)/2
+  omega
 
 -- lemma：度数加法奇偶性
 lemma degree_add_parity (g h : D∞) :
     ∃ (r s : ℕ),
       (φ g).a + (φ h).a = (φ (g * h)).a + 2 * r ∧
       (φ g).b + (φ h).b = (φ (g * h)).b + 2 * s := by
---对ZMod2中奇偶进行讨论
-  induction g using alternating_cases with
-  | h s n => sorry
+  induction g with
+  | r y =>
+    induction h with
+    | r x =>
+      simp [getDegree_r]
+      apply mod2_iff_existnat
+      constructor
+      · omega
+      · simp; norm_cast
+    | sr x =>
+      simp [getDegree_r, getDegree_sr]
+      constructor
+      all_goals
+      apply mod2_iff_existnat
+      constructor
+      · omega
+      · simp
+        repeat rw [Int.cast_sub]
+        grind
+  | sr y =>
+    induction h with
+    | r x =>
+      simp [getDegree_sr, getDegree_r]
+      constructor
+      all_goals
+      apply mod2_iff_existnat
+      constructor
+      · omega
+      · simp
+        repeat rw [Int.cast_add]
+        try ring
+    | sr x =>
+      simp[getDegree_r, getDegree_sr]
+      constructor
+      all_goals
+      apply mod2_iff_existnat
+      constructor
+      · omega
+      · simp
+        repeat rw [Int.cast_sub]
+        grind
+
 
 -- Main Lemma 2.5 Proof
 lemma lemma_2_5_a (u v : Vertex) (d : Degree) :

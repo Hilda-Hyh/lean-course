@@ -1,24 +1,22 @@
 import Mathlib
 import Dihedral.Basic
 
-open CoxeterSystem DihedralGroup
-
-theorem length_s0 : cs.length s0 = 1 := by
-  have : cs.simple 0 = s0 := rfl
-  simpa [this] using length_simple cs (0 : Fin 2)
+open DihedralGroup CoxeterSystem List
 
 notation "ℓ" => cs.length
+
+theorem length_s0 : ℓ s0 = 1 := by
+  have : cs.simple 0 = s0 := rfl
+  simpa [this] using length_simple cs (0 : Fin 2)
 
 lemma length_s1 : ℓ s1 = 1 := by
   have : cs.simple 1 = s1 := rfl
   simpa [this] using length_simple cs (1 : Fin 2)
 
-open CoxeterSystem List
-
 def alternating (start : Fin 2) (n : ℕ) : List (Fin 2) :=
   match n with
-  | 0 => []
-  | k + 1 => start :: alternating (if start = 0 then 1 else 0) k
+  | .zero => []
+  | .succ k => start :: alternating (start + 1) k
 --后面发现可用alternatingWord替代
 -- 验证交替列表
 lemma alternating_chain (s : Fin 2) (n : ℕ) :
@@ -30,12 +28,11 @@ lemma alternating_chain (s : Fin 2) (n : ℕ) :
     cases n with
     | zero => simp [alternating]
     | succ n' =>
-      simp only [alternating, Fin.isValue, ite_eq_right_iff, one_ne_zero, imp_false, ite_not,
-        isChain_cons_cons]
+      simp only [alternating, Fin.isValue, isChain_cons_cons]
       constructor
       · fin_cases s <;> decide
       · fin_cases s
-        <;> simp only [Fin.zero_eta, Fin.isValue, ↓reduceIte]
+        <;> simp only [Fin.zero_eta, Fin.isValue]
         <;> exact ih _
 
 def reducedWord (g : D∞) : List (Fin 2) :=
@@ -56,16 +53,11 @@ def reducedWord (g : D∞) : List (Fin 2) :=
 def listToGroup (l : List (Fin 2)) : D∞ :=
   (l.map f).prod
 
-
 lemma alternating_add_two (s : Fin 2) (n : ℕ) :
-    alternating s (n + 2) = s :: (if s = 0 then 1 else 0) :: alternating s n := by
-  simp only [alternating, Fin.isValue, ite_eq_right_iff, one_ne_zero, imp_false, ite_not,
-    cons.injEq, true_and]
-  split_ifs with h
-  · rw [h]
-  · have := Fin.eq_one_of_ne_zero s h
-    rw [this]
-
+    alternating s (n + 2) = s :: (s + 1) :: alternating s n := by
+  simp only [alternating, Fin.isValue, cons.injEq, true_and]
+  congr
+  simp [add_assoc]
 
 lemma h_s0s1 : f 0 * f 1 = r (1 : ℤ) := by
   simp [f, s0, s1, sr_mul_sr]
@@ -86,6 +78,7 @@ lemma alternating_prod_even (n : ℕ) (s : Fin 2) :
           Fin.mk_one, Int.reduceNeg, Fin.zero_eta] at *
         simp_rw [ih]
         simp [f, s0, s1, add_comm, sub_eq_add_neg]
+
 @[simp]
 lemma alternating_prod_odd (n : ℕ) (s : Fin 2) :
     listToGroup (alternating s (2 * n + 1)) =
@@ -99,11 +92,11 @@ lemma alternating_prod_odd (n : ℕ) (s : Fin 2) :
       all_goals
         simp only [listToGroup, Fin.isValue, Fin.forall_fin_two, ↓reduceIte, one_ne_zero,
           Fin.zero_eta, map_cons, prod_cons, Nat.cast_add, Nat.cast_one, neg_add_rev,
-          Int.reduceNeg, Fin.mk_one] at *
-        simp_rw [ih]
-        simp only [f, s1, s0, sr_mul_sr, sub_eq_add_neg, neg_zero, add_zero, sr_mul_r, add_comm,
-          sr.injEq, zero_add, Int.reduceNeg, add_comm]
-      rw [add_comm]
+          Int.reduceNeg, Fin.mk_one, f, s0, s1, Fin.isValue, Matrix.cons_val_zero, add_zero,
+          Matrix.cons_val_one, Matrix.cons_val_fin_one, Int.reduceNeg] at *
+        rw [add_comm 1 (2*n)]
+        simp [ih]
+        ring
 
 @[simp]
 lemma h_wp : ∀ l, cs.wordProd l = listToGroup l := by
@@ -152,26 +145,24 @@ lemma reducedWord_correct (g : D∞) : cs.wordProd (reducedWord g) = g := by
         rw [abs_of_nonpos h, neg_neg]
 
 lemma alt_inv_even (s : Fin 2) (n : ℕ) : (listToGroup (alternating s (2 * n)))⁻¹ =
-    listToGroup (alternating (if s = 0 then (1 : Fin 2) else 0) (2 * n)) := by
+    listToGroup (alternating (s + 1) (2 * n)) := by
   induction n generalizing s with
   | zero =>
     simp [alternating, listToGroup]
   | succ n ih =>
     rw [mul_add, mul_one]
-    simp only [alternating_add_two, Fin.isValue, ite_eq_right_iff, one_ne_zero, imp_false, ite_not]
-    set s' := if s = 0 then (1 : Fin 2) else 0
-    have : s = if s = 0 then 0 else 1 := by fin_cases s <;> decide
-    rw [← this]
+    simp only [alternating_add_two, Fin.isValue]
     simp only [listToGroup, map_cons, prod_cons]
     rw [mul_inv_rev, mul_inv_rev]
-    rw [fi_inv s, fi_inv s']
-    change (listToGroup (alternating s (2 * n)))⁻¹ * f s' * f s =
-        f s' * (f s * listToGroup (alternating s' (2 * n)))
+    rw [fi_inv s, fi_inv (s + 1)]
+    change (listToGroup (alternating s (2 * n)))⁻¹ * f (s + 1) * f s =
+        f (s + 1) * (f (s + 1 + 1) * listToGroup (alternating (s + 1) (2 * n)))
     rw [ih s]
     fin_cases s
-    · simp_all [f, s0, s1, alternating_prod_even, s']
+    · simp_all [f, s0, s1, alternating_prod_even]
       ring
-    · simp_all [f, s0, s1, alternating_prod_even, s']
+    · simp_all [f, s0, s1, alternating_prod_even]
+
 
 lemma alt_inv_odd (s : Fin 2) (n : ℕ) : (listToGroup (alternating s (2 * n + 1)))⁻¹ =
     listToGroup (alternating s (2 * n + 1)) := by
@@ -183,15 +174,14 @@ lemma alt_inv_odd (s : Fin 2) (n : ℕ) : (listToGroup (alternating s (2 * n + 1
   | succ n ih =>
     rw [show 2 * (n + 1) + 1 = 2 * n + 1 + 2 by rfl]
     simp only [alternating_add_two, Fin.isValue]
-    set s' := if s = 0 then (1 : Fin 2) else 0
     simp only [listToGroup, map_cons, prod_cons, mul_inv_rev, fi_inv]
-    change (listToGroup (alternating s (2 * n + 1)))⁻¹ * f s' * f s =
-        f s * (f s' * listToGroup (alternating s (2 * n + 1)))
+    change (listToGroup (alternating s (2 * n + 1)))⁻¹ * f (s + 1) * f s =
+        f s * (f (s + 1) * listToGroup (alternating s (2 * n + 1)))
     rw [ih s]
     fin_cases s
-    · simp_all [f, s0, s1, alternating_prod_odd, s']
+    · simp_all [f, s0, s1, alternating_prod_odd]
       ring
-    · simp_all [f, s0, s1, alternating_prod_odd, s']
+    · simp_all [f, s0, s1, alternating_prod_odd]
       ring
 
 lemma list_length (s : Fin 2) (n : ℕ) : (alternating s n).length = n := by
@@ -222,14 +212,14 @@ lemma explicit_length_mul_le (i : Fin 2) (g : D∞) :
     simp only [f, s0]
     cases g with
     | r k =>
-      simp only [sr_mul_r, zero_add]
+      simp only [Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero, sr_mul_r, zero_add]
       dsimp [explicit_length]
       split_ifs with h
       · apply Nat.le_succ_of_le
         simp only [tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
       · apply le_refl
     | sr k =>
-      simp only [sr_mul_sr, sub_zero]
+      simp only [Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero, sr_mul_sr, sub_zero]
       dsimp [explicit_length]
       split_ifs with h
       · -- k > 0
@@ -245,7 +235,7 @@ lemma explicit_length_mul_le (i : Fin 2) (g : D∞) :
     cases g with
     | r k =>
       have h_s1 : sr (1 : ZMod 0) = sr 0 * r 1 := by simp [sr_mul_r]
-      rw [h_s1, sr_mul_r, zero_add, sr_mul_r]
+      rw [h_s1, sr_mul_r, zero_add]
       dsimp [explicit_length]
       let k_int : ℤ := k
       by_cases hk : k_int ≥ 0
@@ -272,8 +262,6 @@ lemma explicit_length_mul_le (i : Fin 2) (g : D∞) :
           · apply Nat.le_succ_of_le
             apply Nat.sub_le
     | sr k =>
-      have : sr 1 * sr k = r (k - 1) := by simp [sr_mul_sr]
-      rw [this]
       dsimp [explicit_length]
       split_ifs with h
       · let k_int : ℤ := k

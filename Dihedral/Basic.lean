@@ -1,7 +1,8 @@
 import Mathlib
 
 --无限二面体群由sr0、sr1生成
-open DihedralGroup
+open DihedralGroup CoxeterSystem
+
 notation "D∞" => DihedralGroup 0
 
 example (n : ℕ) (i : ZMod n) : sr i * sr i = 1 := sr_mul_self i
@@ -43,8 +44,8 @@ theorem D_generated_by_sr0_sr1 :
   | r a => intro g; exact r_zpow_in_D (a : ℤ)
   | sr b => intro g; exact sri_in_D b
 
-def s0 : DihedralGroup 0 := sr (0 : ZMod 0)
-def s1 : DihedralGroup 0 := sr (1 : ZMod 0)
+def s0 : D∞ := sr (0 : ZMod 0)
+def s1 : D∞ := sr (1 : ZMod 0)
 --CoxeterMatrix非对角线上的元素为0
 theorem s0s1_infty_order (k : ℕ) (hk : k ≠ 0) : (s0 * s1) ^ k ≠ 1 := by
   have h1 : s0 * s1 = r (1 : ZMod 0) := by simp_all only [ne_eq]; rfl
@@ -58,40 +59,35 @@ theorem s0s1_infty_order (k : ℕ) (hk : k ≠ 0) : (s0 * s1) ^ k ≠ 1 := by
     injection hr with h_arg
   simp_all only [ne_eq, r_pow, mul_zero, r_zero, Nat.cast_eq_zero]
 
+
 --D∞ is a CoxeterSystem with CoxeterMatrix M
-open DihedralGroup CoxeterSystem
 
 def B : Type := Fin 2
-def M : CoxeterMatrix (Fin 2) :=
-{ M := !![1, 0; 0, 1],
-  isSymm := by apply Matrix.IsSymm.ext; simp
-  diagonal := by simp
-  off_diagonal := by simp}
+def M : CoxeterMatrix (Fin 2) :={
+  M := !![1, 0; 0, 1]
+  isSymm := by decide
+  diagonal := by decide
+  off_diagonal := by decide
+}
 
-def f : Fin 2 → DihedralGroup 0
-| 0 => s0
-| 1 => s1
+def f : Fin 2 → D∞ := ![s0, s1]
 
 lemma f_sq_one (i : Fin 2) : (f i) * (f i) = 1 := by
   fin_cases i
-  all_goals
-    simp [f]
-    rfl
+  <;> decide
 
 lemma f_is_liftable : M.IsLiftable f := by
   change  ∀ i i', (f i * f i') ^ M i i' = 1
   intro i j
   simp only [M, Matrix.of_apply, Matrix.cons_val', Matrix.cons_val_fin_one]
-  fin_cases i
-  <;>
-  fin_cases j
-  <;>simp
-  <;>rfl
+  fin_cases i <;> fin_cases j
+  all_goals
+    decide
 
 lemma fi_inv (i : Fin 2) : (f i)⁻¹ = f i := by
   exact inv_eq_of_mul_eq_one_left (f_sq_one i)
 
-def φ : M.Group →* DihedralGroup 0 := (M.toCoxeterSystem).lift ⟨f, f_is_liftable⟩
+def φ : M.Group →* D∞ := (M.toCoxeterSystem).lift ⟨f, f_is_liftable⟩
 
 def s0m := M.simple (0 : Fin 2)
 def s1m := M.simple (1 : Fin 2)
@@ -138,9 +134,8 @@ lemma conj_eq_inv {z : ℤ} : s0m * (s0m * s1m)^ z * s0m =( (s0m * s1m)⁻¹)^ z
       rw [show s0m *s0m = 1 by exact ss0, mul_one, mul_one]
     _ = (s0m * s1m)⁻¹ ^ (-(n : ℤ) - 1) := by rw [zpow_sub];congr
 
-def ψ : DihedralGroup 0 →* M.Group where
-  toFun := fun x =>
-    match x with
+def ψ : D∞ →* M.Group where
+  toFun x := match x with
     | DihedralGroup.r i =>
       (s0m * s1m) ^ (i.cast : ℤ)
     | DihedralGroup.sr i =>
@@ -167,7 +162,7 @@ def ψ : DihedralGroup 0 →* M.Group where
     · rw [conj_eq_inv, inv_zpow, ←zpow_neg, ← zpow_add, add_comm]
       rfl
 
-noncomputable def mulEquiv : D∞ ≃* M.Group where
+def mulEquiv : D∞ ≃* M.Group where
   toFun := ψ.toFun
   invFun := φ.toFun
   left_inv := by
@@ -176,7 +171,7 @@ noncomputable def mulEquiv : D∞ ≃* M.Group where
     | r i =>
       dsimp [ψ]
       have : φ ((s0m * s1m) ^ (i.cast : ℤ)) = (f 0 * f 1) ^ (i.cast : ℤ) := by simp; congr
-      rw [this, f, f, show (s0 * s1) = r 1 by rfl]
+      rw [this, f, s0, s1]
       simp
     | sr i =>
       simp only [ψ, OneHom.toFun_eq_coe, OneHom.coe_mk, MonoidHom.toOneHom_coe, map_mul, map_zpow]
@@ -198,7 +193,8 @@ noncomputable def mulEquiv : D∞ ≃* M.Group where
       · rfl
       · dsimp [φ] at *
         rw [hφ, f, s1]
-        simp only [dvd_refl, ZMod.cast_one, zpow_one, Fin.isValue]
+        simp only [Fin.isValue, Matrix.cons_val_one, Matrix.cons_val_fin_one, dvd_refl,
+          ZMod.cast_one, zpow_one]
         group
         change M.simple 0 ^2 * M.simple 1 = M.simple 1
         simp only [Fin.isValue, mul_eq_right]
@@ -208,5 +204,5 @@ noncomputable def mulEquiv : D∞ ≃* M.Group where
   map_mul' := by
     exact ψ.map_mul'
 
-noncomputable def cs : CoxeterSystem M (DihedralGroup 0) :=
+def cs : CoxeterSystem M D∞ :=
   { mulEquiv := mulEquiv}
