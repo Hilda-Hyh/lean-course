@@ -370,19 +370,22 @@ lemma reducedWord_is_reduced (g : D∞) : cs.IsReduced (reducedWord g) := by
   rw [length_eq g]
 
 @[simp]
-theorem length_r (k : ℤ) : ℓ (r k) = 2 * k.natAbs := by
+theorem length_r (k : ℤ) : ℓ (r k) = 2*k.natAbs := by
   rw [length_eq (r k)]
   dsimp [reducedWord]
   split_ifs with h <;>
-    rw [list_length]
+    simp [list_length]
 
 @[simp]
 theorem length_sr (k : ℤ) : ℓ (sr k) =
     if k > 0 then 2 * k.natAbs - 1 else 2 * k.natAbs + 1 := by
   rw [length_eq (sr k)]
   dsimp [reducedWord]
-  split_ifs with h1<;>
+  split_ifs with h <;>
     rw [list_length]
+
+theorem length_sr' (k : ℤ) : ℓ (sr k) = (2*k - 1).natAbs := by
+  simp [length_sr]; grind
 
 theorem D_induction {P : D∞ → Prop}
     (h1 : P 1)

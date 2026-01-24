@@ -481,6 +481,7 @@ lemma getDegree_alternating_odd_1 (k : ℕ) :
     simp [getDegree]
     rfl
 
+@[simp]
 lemma getDegree_r (k : ℤ) : φ (r k) = ⟨k.natAbs, k.natAbs⟩ := rfl
 
 lemma getDegree_sr (k : ℤ) : φ (sr k) = ⟨(k - 1).natAbs, k.natAbs⟩ := by
@@ -496,9 +497,9 @@ lemma le_mod2_existnat {a b : ℕ} (le : a ≥ b) (meq : (a : ZMod 2) = (b : ZMo
 lemma degree_add_parity (g h : D∞) :
     ∃ (r s : ℕ), (φ g).a + (φ h).a = (φ (g * h)).a + 2 * r
                ∧ (φ g).b + (φ h).b = (φ (g * h)).b + 2 * s := by
-  induction g with
+  cases g with
   | r y =>
-    induction h with
+    cases h with
     | r x =>
       simp only [getDegree_r, r_mul_r, exists_and_left, exists_and_right, and_self]
       apply le_mod2_existnat
@@ -514,7 +515,7 @@ lemma degree_add_parity (g h : D∞) :
         repeat rw [Int.cast_sub]
         grind
   | sr y =>
-    induction h with
+    cases h with
     | r x =>
       simp only [getDegree_sr, getDegree_r, sr_mul_r, exists_and_left, exists_and_right]
       constructor

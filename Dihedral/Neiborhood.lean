@@ -4,10 +4,10 @@ import Dihedral.Length
 import Dihedral.Degree
 
 open CoxeterSystem DihedralGroup Nat
-notation "gD" => getDegree
+-- notation "gD" => getDegree
 -- (Reachable Set)
 def ReachableSet (u : Vertex) (d : Degree) : Set Vertex :=
-  { v | exists d', HasChain u v d' ∧ d' ≤ d }
+  { v | ∃ d', HasChain u v d' ∧ d' ≤ d }
 
 def IsMaximalIn (v : Vertex) (S : Set Vertex) : Prop :=
   v ∈ S ∧ ∀ v' ∈ S, v ≤ v' → v = v'
@@ -18,7 +18,7 @@ def CurveNeighborhood (u : Vertex) (d : Degree) : Set Vertex :=
 
 -- 定义集合 A_d(u)
 def Ad (u : Vertex) (d : Degree) : Set Vertex :=
-  { v | cs.length (u * v) = cs.length u + cs.length v ∧ gD v ≤ d }
+  { v |  ℓ (u * v) = ℓ u +  ℓ v ∧ φ v ≤ d }
 
 -- 定义集合 S 中的极大元子集
 def maximalElements (S : Set Vertex) : Set Vertex :=
@@ -56,7 +56,7 @@ lemma h_finite : (Ad u d).Finite := by
     rw [this]
     have hfinite :
         (⋃ k ∈ (Finset.range (limit + 1) : Set ℕ),
-          {v | cs.length v = k}).Finite := by
+          {v | ℓ v = k}).Finite := by
       apply Set.Finite.biUnion (Finset.finite_toSet _)
       intro k hk
       have h_finite_image : (Set.range (fun (s : Fin 2) => listToGroup (alternating s k))).Finite :=
@@ -78,17 +78,43 @@ lemma h_nonempty : (Ad u d).Nonempty := ⟨1, ⟨by simp, by
 
 lemma h_chain {u : Vertex} (h : u ≠ 1) : IsChain (· ≤ ·) (Ad u d) := by
   intro x hx y hy hxy
-  simp only
-  --simp only [not_or] at h
-  --obtain ⟨h1, h2⟩ := h
-  obtain ⟨hv, hv'⟩ := hx
-  obtain ⟨hw, hw'⟩ := hy
-
-
-  change ((Lt x y) ∨ (x = y)) ∨ ((Lt y x) ∨ (y = x))
-  simp [hxy, hxy.symm]
-
-  sorry
+  suffices h : (x < y) ∨ (y < x) by tauto
+  rcases hx with ⟨hv, hv'⟩
+  rcases hy with ⟨hw, hw'⟩
+  rcases d with ⟨a,b⟩
+  simp_all only [ne_eq, Degreele_le_def, lemma_2_3, lt_or_lt_iff_ne]
+  cases u with
+  | sr nu =>
+    rcases x with ⟨nx⟩ | ⟨nx⟩ <;>
+    rcases y with ⟨ny⟩ | ⟨ny⟩
+    · simp_all; grind
+    · simp_all; grind
+    · simp_all; grind
+    · simp only [sr_mul_sr] at hv hw
+      rw [length_sr', length_sr', length_r] at hv hw
+      rw [length_sr', length_sr']
+      simp_all only [getDegree_sr, sr.injEq]
+      change ℤ at *
+      have : nx < ny ∨ ny < nx := Int.ne_iff_lt_or_gt.mp hxy
+      omega
+  | r nu =>
+    have nun0 : nu ≠ 0 := by
+      intro p
+      simp [p] at h
+    rcases x with ⟨nx⟩ | ⟨nx⟩ <;>
+    rcases y with ⟨ny⟩ | ⟨ny⟩
+    · simp_all only [ne_eq, getDegree_r, r_mul_r, length_r, r.injEq, mul_eq_mul_left_iff,
+      OfNat.ofNat_ne_zero, or_false]
+      change ℤ at *
+      grind
+    · simp_all; grind
+    · simp_all; grind
+    · simp only [r_mul_sr] at hv hw
+      rw [length_sr', length_sr', length_r] at hv hw
+      rw [length_sr', length_sr']
+      simp_all only [ne_eq, getDegree_sr, sr.injEq]
+      change ℤ at *
+      grind
 
 theorem lemma_3_1_1 (u : Vertex) (d : Degree) :
     (u ≠ 1) → ∃! v, IsMaximalIn v (Ad u d) := by
@@ -115,14 +141,111 @@ theorem lemma_3_1_1 (u : Vertex) (d : Degree) :
     | inr h_le =>
       apply hy_max m hm.1 h_le
 
-theorem lemma_3_1_2 (u : Vertex) (d : Degree) :
-     (u = 1 ∧ d.a ≠ d.b) →
-      ∃! v, IsMaximalIn v (Ad u d) := by sorry
+lemma lemma_3_hl (d : Degree) : Ad 1 d = {x : Vertex | φ x ≤ d} := by
+  simp [Ad]
 
-theorem lemma_3_1_3 (a : ℕ) :
+theorem lemma_3_1_2 (u : Vertex) (d : Degree) :
+     (d.a ≠ d.b) → ∃! v, IsMaximalIn v (Ad 1 d) := by
+      intro ne
+      rcases d with ⟨a, b⟩
+      dsimp [IsMaximalIn]
+      rw [Nat.ne_iff_lt_or_gt]at ne
+      simp only [lemma_3_hl]
+      rcases ne with h | h
+      · use s_α ⟨a, a + 1, Or.inr rfl⟩
+        simp only [Degreele_le_def, s_α, gt_iff_lt, add_lt_iff_neg_left, _root_.not_lt_zero,
+          ↓reduceIte, Fin.isValue, show a + (a + 1) = 2 * a + 1 by omega, alternating_prod_odd,
+          one_ne_zero, Set.mem_setOf_eq, and_imp]
+        simp only at h
+        split_ands
+        · simp[getDegree_sr]
+        · simp[getDegree_sr]
+          omega
+        · intro v h1 h2 h3
+          have h3 : ( ℓ (sr (a + 1:ℕ)) < ℓ v) ∨ (sr (a + 1:ℕ) = v) := by
+            rw [← lemma_2_3] ; exact h3
+          cases v with
+          | r n =>
+            rw [length_sr', length_r] at h3
+            simp_all [getDegree_r]
+            omega
+          | sr n =>
+            repeat rw [length_sr'] at h3
+            simp_all only [getDegree_sr, cast_add, cast_one, sr.injEq]
+            by_contra p
+            simp [p] at h3
+            omega
+        · intro v h1 h2 h3
+          cases v with
+          | r n =>
+            simp_all only [getDegree_r, reduceCtorEq]
+            specialize h3 (sr ((a:ℕ)+1:ℤ))
+            simp_all only [getDegree_sr, add_sub_cancel_right, Int.natAbs_natCast, le_refl,
+              reduceCtorEq, imp_false, forall_const]
+            norm_cast at h3
+            refine h3 h (le_of_eq_or_lt ?_)
+            simp only [cast_add, cast_one, reduceCtorEq, false_or]
+            have h: ℓ (r n) < ℓ (sr ((a:ℕ)+1:ℤ)) := by
+              rw [length_r,length_sr']; omega
+            exact (lemma_2_3 _ _).mpr h
+          | sr n =>
+            specialize h3 (sr ((a:ℕ)+1:ℤ))
+            simp_all only [getDegree_sr, add_sub_cancel_right, Int.natAbs_natCast, le_refl,
+              sr.injEq, forall_const]
+            apply h3
+            · omega
+            · apply le_of_eq_or_lt
+              rw [lemma_2_3, length_sr',length_sr']
+              grind
+      · use s_α ⟨b + 1, b, Or.inl rfl⟩
+        simp only [Degreele_le_def, s_α, gt_iff_lt, lt_add_iff_pos_right, zero_lt_one, ↓reduceIte,
+          Fin.isValue, Set.mem_setOf_eq, and_imp]
+        repeat rw[show b + 1+b = 2*b + 1 by omega, getDegree_alternating_odd_0 b]
+        simp_all only [le_refl, and_true, Fin.isValue, alternating_prod_odd, ↓reduceIte]
+        split_ands
+        · exact h
+        · intro v h1 h2 h3
+          have h3 : ( ℓ (sr (-(b:ℤ))) < ℓ v) ∨ (sr (-(b:ℤ)) = v) := by
+            rw [← lemma_2_3] ; exact h3
+          cases v with
+          | r n =>
+            rw [length_sr', length_r] at h3
+            simp_all [getDegree_r]
+            omega
+          | sr n =>
+            repeat rw [length_sr'] at h3
+            simp_all only [getDegree_sr, sr.injEq]
+            by_contra p
+            simp [p] at h3
+            omega
+        · intro v h1 h2 h3
+          cases v with
+          | r n =>
+            simp_all only [getDegree_r, reduceCtorEq]
+            specialize h3 (sr (-b:ℤ))
+            simp_all only [getDegree_sr, Int.natAbs_neg, Int.natAbs_natCast, le_refl, reduceCtorEq,
+              imp_false, forall_const]
+            norm_cast at h3
+            refine h3 (by omega) (le_of_eq_or_lt ?_)
+            simp only [reduceCtorEq, false_or]
+            have h: ℓ (r n) < ℓ (sr (-b:ℤ)) := by
+              rw [length_r,length_sr']; omega
+            exact (lemma_2_3 _ _).mpr h
+          | sr n =>
+            specialize h3 (sr (-b:ℤ))
+            simp_all only [getDegree_sr, Int.natAbs_neg, Int.natAbs_natCast, le_refl, sr.injEq,
+              forall_const]
+            apply h3
+            · omega
+            · apply le_of_eq_or_lt
+              rw [lemma_2_3, length_sr',length_sr']
+              grind
+
+theorem lemma_3_1_3 (a : ℕ) (v : Vertex):
     -- 第二部分：d = (a, a) 且 u = 1 的情况
     let S := Ad 1 (Degree.mk a a)
-    { v | IsMaximalIn v S } = {(s0*s1)^a , (s1*s0)^a } := by
+    IsMaximalIn v S ↔ v = (s0*s1)^a ∨ v = (s1*s0)^a := by
+  simp[lemma_3_hl]
   sorry
 
 def root_from_degree (d : Degree) : Root :=
@@ -153,12 +276,12 @@ theorem theorem_3_3 (d : Degree) :
 -- Lemma 3.4: 关于 u, z ∈ Ad(1) 和 v ∈ Γd(u) 的性质
 theorem lemma_3_4_a (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
     (hz : z ∈ Ad 1 d) (hv : v ∈ CurveNeighborhood u d) :
-    cs.length (u * z) ≤ cs.length v ∧ gD (u⁻¹ * v) ≤ d := by
+    ℓ (u * z) ≤ ℓ v ∧ φ (u⁻¹ * v) ≤ d := by
   sorry
 
 theorem lemma_3_4_b (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
     (hz : z ∈ CurveNeighborhood 1 d) (hv : v ∈ CurveNeighborhood u d) :
-    cs.length (u⁻¹ * v) ≤ cs.length z := by
+    ℓ (u⁻¹ * v) ≤ ℓ z := by
   sorry
 
 theorem lemma_3_5 (u v : Vertex) (d : Degree) :
@@ -170,11 +293,11 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) :
     · -- 对于 u ≠ 1，使用反证法
       by_contra h_not_eq
 
-      have h_le : cs.length (u * (u⁻¹ * v)) ≤ cs.length u + cs.length (u⁻¹ * v) :=
+      have h_le : ℓ (u * (u⁻¹ * v)) ≤ ℓ u + ℓ (u⁻¹ * v) :=
         cs.length_mul_le u (u⁻¹ * v)
       simp only [mul_inv_cancel_left] at h_le h_not_eq
 
-      have h_strict : cs.length v < cs.length u + cs.length (u⁻¹ * v) :=
+      have h_strict : ℓ v < ℓ u + ℓ (u⁻¹ * v) :=
         Nat.lt_of_le_of_ne h_le h_not_eq
       sorry
 
@@ -200,8 +323,8 @@ lemma reachable_of_Ad (u : Vertex) (d : Degree) (w : Vertex) (h : w ∈ Ad u d) 
 
 -- 如果 x, y 都在 Ad u d 中（即长度对 u 可加），则 x ≤ y ↔ u * x ≤ u * y
 lemma mul_le_mul_left_of_length_add (u : Vertex) (x y : Vertex)
-    (hx : cs.length (u * x) = cs.length u + cs.length x)
-    (hy : cs.length (u * y) = cs.length u + cs.length y) :
+    (hx : ℓ (u * x) = ℓ u + ℓ x)
+    (hy : ℓ (u * y) = ℓ u + ℓ y) :
     x ≤ y ↔ u * x ≤ u * y := by
   sorry
 
@@ -232,13 +355,13 @@ theorem main_theorem (u : Vertex) (d : Degree) :
     -- 应用 Lemma 3.4.a 得到长度不等式
     have h_len_ineq := lemma_3_4_a u d w v hw_in_Ad1 hv
     rcases h_len_ineq with ⟨h_len_uw_le_v, _⟩
-    have h_len_v : cs.length v = cs.length u + cs.length z := by
+    have h_len_v : ℓ v = ℓ u + ℓ z := by
       have : v = u * z := by simp [z]
       rw [this]
       exact h_z_in_Ad.1
-    have h_len_uw : cs.length (u * w) = cs.length u + cs.length w := hw_max.1.1
+    have h_len_uw : ℓ (u * w) = ℓ u + ℓ w := hw_max.1.1
     rw [h_len_v, h_len_uw] at h_len_uw_le_v
-    have h_len_w_le_z : cs.length w ≤ cs.length z := Nat.le_of_add_le_add_left h_len_uw_le_v
+    have h_len_w_le_z : ℓ w ≤ ℓ z := Nat.le_of_add_le_add_left h_len_uw_le_v
     have h_z_eq_w : z = w := by
       rcases h_z_le_w with h|h'
       · exfalso
