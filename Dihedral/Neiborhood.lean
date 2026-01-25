@@ -241,12 +241,93 @@ theorem lemma_3_1_2 (u : Vertex) (d : Degree) :
               rw [lemma_2_3, length_sr',length_sr']
               grind
 
-theorem lemma_3_1_3 (a : ℕ) (v : Vertex):
+lemma h_r_pos (a : ℕ) : (s0 * s1) ^ a = r (a : ℤ) := by
+  simp [s0, s1]
+
+lemma h_r_neg (a : ℕ) : (s1 * s0) ^ a = r (-(a : ℤ)) := by
+  simp [s0, s1]
+
+theorem lemma_3_1_3 (a : ℕ) (v : Vertex) :
     -- 第二部分：d = (a, a) 且 u = 1 的情况
     let S := Ad 1 (Degree.mk a a)
     IsMaximalIn v S ↔ v = (s0*s1)^a ∨ v = (s1*s0)^a := by
-  simp[lemma_3_hl]
-  sorry
+  simp only [lemma_3_hl, Degreele_le_def]
+
+  rw [h_r_pos, h_r_neg]
+
+  have h_len_le : ∀ x, getDegree x ≤ Degree.mk a a → ℓ x ≤ 2 * a := by
+    intro x h_deg
+    rcases x with (_ | k)
+    --  r k
+    · simp only [getDegree_r, Degreele_le_def] at h_deg
+      rw [length_r]
+      omega
+    -- sr k
+    · simp only [getDegree_sr, Degreele_le_def] at h_deg
+      rw [length_sr]
+      split_ifs with h_pos
+      · by_cases hk0 : k = 0
+        · simp [hk0] at h_deg ⊢
+        · omega
+      · omega
+  --  r a , r (-a) ∈ S
+  have h_mem_pos : getDegree (r (a : ℤ)) ≤ Degree.mk a a := by
+    simp only [getDegree_r, Int.natAbs_natCast, le_refl]
+  have h_mem_neg : getDegree (r (-(a : ℤ))) ≤ Degree.mk a a := by
+    simp only [getDegree_r, Int.natAbs_neg, Int.natAbs_natCast, le_refl]
+  -- 极大性等价于长度等于 2a
+  have h_maximal_iff_len : IsMaximalIn v {x | getDegree x ≤ Degree.mk a a} ↔
+                           getDegree v ≤ Degree.mk a a ∧ ℓ v = 2 * a := by
+    constructor
+    · rintro ⟨h_in, h_max⟩
+      constructor
+      · exact h_in
+      · -- 反证：如果长度小于 2a，则它肯定小于 r a (因为 r a 在 S 中且长度更大)
+        by_contra h_len_ne
+        have h_len_lt : ℓ v < 2 * a := lt_of_le_of_ne (h_len_le v h_in) h_len_ne
+        -- 构造一个长度为 2a 的元素 w = r a
+        let a' := (a : ZMod 0)
+        let w := r a'
+        have h_w_in : w ∈ {x | getDegree x ≤ Degree.mk a a} := h_mem_pos
+        have h_len_w : ℓ w = 2 * a := by sorry--simp [length_r]
+        have h_lt : v < w := (lemma_2_3 v w).mpr (by rw [h_len_w]; exact h_len_lt)
+        have h_le : v ≤ w := le_of_lt h_lt
+        have h_eq := h_max w h_w_in h_le
+        rw [h_eq] at h_len_lt
+        rw [h_len_w] at h_len_lt
+        exact lt_irrefl _ h_len_lt
+    · rintro ⟨h_in, h_len_eq⟩
+      constructor
+      · exact h_in
+      · intro v' h_in' h_le
+        rcases h_le with h_lt | h_eq
+        · --  v < v'
+          have h_len_lt : ℓ v < ℓ v' := (lemma_2_3 v v').mp h_lt
+          rw [h_len_eq] at h_len_lt
+          have h_bound := h_len_le v' h_in'
+          linarith
+        · exact h_eq
+  have h_set_eq : {x | getDegree x ≤ { a := a, b := a }} =
+     {x | (getDegree x).a ≤ a ∧ (getDegree x).b ≤ a} := by
+    ext x;simp only [Degreele_le_def, Set.mem_setOf_eq]
+  rw [← h_set_eq, h_maximal_iff_len]
+  constructor
+  · rintro ⟨h_deg, h_len⟩
+    cases v with
+    | r k =>
+      simp [length_r] at h_len
+      have hk : k.natAbs = a := by linarith
+      rw [Int.natAbs_eq_iff] at hk
+      rcases hk with rfl | rfl
+      · left; rfl
+      · right; rfl
+    | sr k =>
+      simp [length_sr] at h_len
+      split_ifs at h_len
+      <;>omega
+  · rintro (rfl | rfl)
+    · exact ⟨h_mem_pos, by simp [length_r]⟩
+    · exact ⟨h_mem_neg, by simp [length_r]⟩
 
 def root_from_degree (d : Degree) : Root :=
   if d.a > d.b then
@@ -259,10 +340,132 @@ def s_alpha_d (d : Degree) : Vertex := s_α (root_from_degree d)
 def s0s1_pow (a : ℕ) : Vertex := listToGroup (alternating 0 (2 * a))
 def s1s0_pow (a : ℕ) : Vertex := listToGroup (alternating 1 (2 * a))
 
+-- 辅助定义：计算交替字序列中的最后一个生成元索引
+-- 如果序列长度为 n，起始为 s，则第 n 个元素（从 0 开始计数）是 s + n (mod 2)
+def last_index (s : Fin 2) (n : ℕ) : Fin 2 :=
+  if n % 2 == 0 then s else (if s = 0 then 1 else 0)
+
+-- 对应的简单根
+def root_for_index (i : Fin 2) : Root :=
+  if i = 0 then α0 else α1
+
+-- alternating s (n + 1) 生成的群元素等于 alternating s n 生成的元素右乘一个新的生成元
+lemma listToGroup_alternating_succ_right (s : Fin 2) (n : ℕ) :
+    listToGroup (alternating s (n + 1)) = listToGroup (alternating s n) * f (last_index s n) := by
+  induction n generalizing s with
+  | zero =>
+    simp [alternating, listToGroup, last_index]
+  | succ n ih =>
+    rw [alternating]
+    simp only [listToGroup, List.map_cons, List.prod_cons]
+    rw [← listToGroup, ← listToGroup]
+    rw [ih (s + 1), ← mul_assoc]
+    congr 1
+    dsimp [last_index]
+    fin_cases s
+    all_goals
+    · simp; grind
+
+-- 沿着alternating增加一步，度数恰好增加对应的简单根的度数
+lemma getDegree_alternating_succ (s : Fin 2) (n : ℕ) :
+    φ (listToGroup (alternating s (n + 1))) =
+    φ (listToGroup (alternating s n)) + (root_for_index (last_index s n)).toDegree := by
+  -- 分奇偶讨论 n
+  induction n using n_mod_2_induction with
+  | h0 k =>
+    simp only [alternating_prod_odd, Fin.isValue, alternating_prod_even, root_for_index, last_index,
+      mul_mod_right, BEq.rfl, ↓reduceIte]
+    fin_cases s
+    · simp only[Fin.zero_eta, Fin.isValue, ↓reduceIte, getDegree_sr, Int.natAbs_neg,
+      Int.natAbs_natCast, getDegree_r, Root.toDegree, α0]
+      rw [show (-(k : ℤ)-1).natAbs = k+1 by omega]
+      rfl
+    · simp only [Fin.mk_one, Fin.isValue, one_ne_zero, ↓reduceIte, getDegree_sr,
+      add_sub_cancel_right, Int.natAbs_natCast, getDegree_r, Int.natAbs_neg, Root.toDegree, α1]
+      rfl
+  | h1 k =>
+    rw [show 2 * k + 1 + 1 = 2 * (k + 1) by omega]
+    simp only [alternating_prod_odd, Fin.isValue, root_for_index, last_index, mul_add_mod_self_left,
+      mod_succ, Nat.reduceBEq, Bool.false_eq_true, ↓reduceIte, ite_eq_right_iff, one_ne_zero,
+      imp_false, ite_not, alternating_prod_even]
+    fin_cases s
+    · simp only[Fin.zero_eta, Fin.isValue, ↓reduceIte, getDegree_sr, Int.natAbs_neg,
+      Int.natAbs_natCast, getDegree_r, Root.toDegree, α1]
+      rw [show (-(k : ℤ)-1).natAbs = k+1 by omega]
+      rfl
+    · simp only [Fin.mk_one, Fin.isValue, one_ne_zero, ↓reduceIte, getDegree_sr,
+      add_sub_cancel_right, Int.natAbs_natCast, getDegree_r, Int.natAbs_neg, Root.toDegree, α0]
+      rfl
+
+lemma trivial_chain (u : Vertex) : HasChain 1 u (φ u) := by
+  induction u using alternating_cases with
+  | h s n =>
+  induction n generalizing s with
+  | zero =>
+    simp only [listToGroup, alternating, List.map_nil, List.prod_nil]
+    exact HasChain.refl 1
+  | succ n ih =>
+    -- Step case: n -> n + 1
+    let u := listToGroup (alternating s n)
+    let v := listToGroup (alternating s (n + 1))
+    let i := last_index s n
+    let α := root_for_index i
+    have h_chain_u := ih s
+    have h_edge : IsEdge u v α := by
+      dsimp [IsEdge, v, u]
+      rw [listToGroup_alternating_succ_right]
+      congr
+      simp only [last_index, beq_iff_eq, Fin.isValue, root_for_index, α, i]
+      by_cases h' : n % 2 = 0
+      all_goals
+        simp only [h', ↓reduceIte, Fin.isValue, ite_eq_right_iff, one_ne_zero, imp_false, ite_not]
+        fin_cases s
+        all_goals
+          simp; rfl
+    rw [getDegree_alternating_succ]
+    apply HasChain.step h_chain_u h_edge
+
 -- 结论 A: 证明对于单位元1，曲线邻域就是 Ad(1) 的极大元集合
 theorem curve_neighborhood_eq_max_Ad_identity (d : Degree) :
     CurveNeighborhood 1 d = { v | IsMaximalIn v (Ad 1 d) } := by
-  sorry
+  rw [CurveNeighborhood]
+  congr
+  ext v
+  constructor
+  -- ReachableSet 1 d ⊆ Ad 1 d
+  · rintro h_in_Re
+    simp only [ReachableSet, ] at h_in_Re
+    -- Ad 1 d 的定义简化为 φ v ≤ d (因为 ℓ(1*v) = ℓ 1 + ℓ v 恒成立)
+    simp only [Ad, one_mul, length_one, zero_add, true_and]
+    have h_deg_le : getDegree v ≤ d := by
+      rcases h_in_Re with ⟨h_mem, _⟩
+      simp only [Set.mem_setOf_eq] at h_mem
+      rcases h_mem with ⟨d', h_chain, h_d'_le_d⟩
+      have h_phi_le_d' := lemma_2_5_b 1 v d' h_chain
+      simp only [inv_one, one_mul] at h_phi_le_d'
+      exact le_trans h_phi_le_d' h_d'_le_d
+    rw [IsMaximalIn]
+    refine ⟨h_deg_le, ?_⟩
+    intro x h_x_deg_le h_v_le_x
+    have h_x_in_Re : x ∈ {w | ∃ d', HasChain 1 w d' ∧ d' ≤ d} := by
+      use getDegree x
+      exact ⟨trivial_chain x, h_x_deg_le⟩
+    apply h_in_Re.2 x h_x_in_Re h_v_le_x
+  --Ad 1 d ⊆ ReachableSet 1 d
+  · intro h_in_Ad
+    simp only [Ad, one_mul, length_one, zero_add, true_and] at h_in_Ad
+    simp only [ReachableSet]
+    constructor
+    · use getDegree v
+      exact ⟨trivial_chain v, h_in_Ad.1⟩
+    · intro x h_in_Re h_v_lt_x
+      have h_x_in_Ad : x ∈ {x | getDegree x ≤ d} := by
+        change getDegree x ≤ d
+        rcases h_in_Re with ⟨d', h_chain, h_d'_le_d⟩
+        have h_phi_le_d' := lemma_2_5_b 1 x d' h_chain
+        simp only [inv_one, one_mul] at h_phi_le_d'
+        exact le_trans h_phi_le_d' h_d'_le_d
+      apply h_in_Ad.2 x h_x_in_Ad h_v_lt_x
 
 -- 结论 B: Theorem 3.3 的具体计算公式
 theorem theorem_3_3 (d : Degree) :
@@ -277,6 +480,7 @@ theorem theorem_3_3 (d : Degree) :
 theorem lemma_3_4_a (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
     (hz : z ∈ Ad 1 d) (hv : v ∈ CurveNeighborhood u d) :
     ℓ (u * z) ≤ ℓ v ∧ φ (u⁻¹ * v) ≤ d := by
+
   sorry
 
 theorem lemma_3_4_b (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
