@@ -289,7 +289,7 @@ theorem lemma_3_1_3 (a : ℕ) (v : Vertex) :
         let a' := (a : ZMod 0)
         let w := r a'
         have h_w_in : w ∈ {x | getDegree x ≤ Degree.mk a a} := h_mem_pos
-        have h_len_w : ℓ w = 2 * a := by sorry--simp [length_r]
+        have h_len_w : ℓ w = 2 * a := by simp [w, length_r, a']; omega
         have h_lt : v < w := (lemma_2_3 v w).mpr (by rw [h_len_w]; exact h_len_lt)
         have h_le : v ≤ w := le_of_lt h_lt
         have h_eq := h_max w h_w_in h_le
