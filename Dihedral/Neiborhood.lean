@@ -252,9 +252,7 @@ theorem lemma_3_1_3 (a : ℕ) (v : Vertex) :
     let S := Ad 1 (Degree.mk a a)
     IsMaximalIn v S ↔ v = (s0*s1)^a ∨ v = (s1*s0)^a := by
   simp only [lemma_3_hl, Degreele_le_def]
-
   rw [h_r_pos, h_r_neg]
-
   have h_len_le : ∀ x, getDegree x ≤ Degree.mk a a → ℓ x ≤ 2 * a := by
     intro x h_deg
     rcases x with (_ | k)
@@ -476,12 +474,63 @@ theorem theorem_3_3 (d : Degree) :
         { s0s1_pow d.a, s1s0_pow d.a } := by
   sorry
 
--- Lemma 3.4: 关于 u, z ∈ Ad(1) 和 v ∈ Γd(u) 的性质
-theorem lemma_3_4_a (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
-    (hz : z ∈ Ad 1 d) (hv : v ∈ CurveNeighborhood u d) :
-    ℓ (u * z) ≤ ℓ v ∧ φ (u⁻¹ * v) ≤ d := by
+lemma edge_left_mul (g u v : Vertex) (α : Root) (h : IsEdge u v α) :
+    IsEdge (g * u) (g * v) α := by
+  dsimp [IsEdge] at *
+  rw [h, mul_assoc]
 
-  sorry
+lemma chain_left_mul (g u v : Vertex) (d : Degree) (h : HasChain u v d) :
+    HasChain (g * u) (g * v) d := by
+  induction h with
+  | refl  =>
+    exact HasChain.refl (g * u)
+  | step h_prev h_edge ih =>
+    apply HasChain.step ih (edge_left_mul g _ _ _ h_edge)
+
+lemma CurveNeighborhood_max (h : v ∈ CurveNeighborhood u d) :
+     ∀ w ∈ ReachableSet u d, ℓ w ≤ ℓ v := by
+  rw [CurveNeighborhood] at h
+  intro w hw
+  by_contra h_lt
+  rw [not_le, ← lemma_2_3] at h_lt
+  have h_le : v ≤ w := le_of_lt h_lt
+  have h_eq := h.2 w hw h_le
+  rw [h_eq] at h_lt
+  exact (lt_self_iff_false w).mp h_lt
+
+-- Lemma 3.4: 关于 u, z ∈ Ad(1) 和 v ∈ Γd(u) 的性质
+theorem lemma_3_4_a_1 (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
+    (hz : z ∈ Ad 1 d) (hv : v ∈ CurveNeighborhood u d) :
+    ℓ (u * z) ≤ ℓ v := by
+  have h_deg_z : φ z ≤ d := by
+      simp only [Ad, one_mul, length_one, zero_add, Degreele_le_def, true_and,
+        Set.mem_setOf_eq] at hz; exact ⟨hz.1,hz.2⟩
+    -- 存在从 1 到 z 的链，度数为 φ(z)
+  have h_chain_z : HasChain 1 z (φ z) := trivial_chain z
+  have h_chain_uz : HasChain u (u * z) (getDegree z) :=by
+    have := chain_left_mul u 1 z _ h_chain_z
+    simp only [mul_one] at this
+    exact this
+  --  u * z 在 u 的 ReachableSet 中 (因为 getDegree z ≤ d)
+  have h_uz_in_Re : u * z ∈ ReachableSet u d := by
+    use getDegree z
+  exact CurveNeighborhood_max hv (u * z) h_uz_in_Re
+
+theorem lemma_3_4_a_2 (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
+    (hz : z ∈ Ad 1 d) (hv : v ∈ CurveNeighborhood u d) :
+   φ (u⁻¹ * v) ≤ d := by
+  have h_v_reachable : v ∈ ReachableSet u d := by
+    rw [CurveNeighborhood] at hv
+    exact hv.1
+  rcases h_v_reachable with ⟨dv, h_chain_v, h_dv_le_d⟩
+  -- 将链左乘 u⁻¹
+  have h_chain_inv_u_v : HasChain (u⁻¹ * u) (u⁻¹ * v) dv := chain_left_mul u⁻¹ u v dv h_chain_v
+  simp only [inv_mul_cancel] at h_chain_inv_u_v
+  -- 根据 Lemma 2.5 (b)，如果存在 1 -> w 的链，度数为 dv，则 φ(w) ≤ dv
+  have h_phi_le_dv := lemma_2_5_b 1 (u⁻¹ * v) dv h_chain_inv_u_v
+  -- 结合 dv ≤ d，得 φ(u⁻¹v) ≤ d
+  simp only [inv_one, one_mul, Degreele_le_def] at h_phi_le_dv
+  exact le_trans h_phi_le_dv h_dv_le_d
 
 theorem lemma_3_4_b (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
     (hz : z ∈ CurveNeighborhood 1 d) (hv : v ∈ CurveNeighborhood u d) :
@@ -557,8 +606,7 @@ theorem main_theorem (u : Vertex) (d : Degree) :
     obtain ⟨w, hw_max, h_z_le_w⟩ := exists_max_in_Ad u d z h_z_in_Ad
     have hw_in_Ad1 : w ∈ Ad 1 d := Ad_subset_Ad_one u d w hw_max.1
     -- 应用 Lemma 3.4.a 得到长度不等式
-    have h_len_ineq := lemma_3_4_a u d w v hw_in_Ad1 hv
-    rcases h_len_ineq with ⟨h_len_uw_le_v, _⟩
+    have h_len_uw_le_v := lemma_3_4_a_1 u d w v hw_in_Ad1 hv
     have h_len_v : ℓ v = ℓ u + ℓ z := by
       have : v = u * z := by simp [z]
       rw [this]
