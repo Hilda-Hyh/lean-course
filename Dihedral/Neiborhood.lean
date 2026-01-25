@@ -535,7 +535,17 @@ theorem lemma_3_4_a_2 (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
 theorem lemma_3_4_b (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
     (hz : z ∈ CurveNeighborhood 1 d) (hv : v ∈ CurveNeighborhood u d) :
     ℓ (u⁻¹ * v) ≤ ℓ z := by
-  sorry
+  rw [CurveNeighborhood] at hv
+  rcases hv with ⟨h_v_in_Re, -⟩
+  rcases h_v_in_Re with ⟨dv, h_chain_v, h_dv_le_d⟩
+  -- 链左乘 u⁻¹
+  have h_chain_inv : HasChain (u⁻¹ * u) (u⁻¹ * v) dv := chain_left_mul u⁻¹ u v dv h_chain_v
+  simp only [inv_mul_cancel] at h_chain_inv
+  -- 证明 u⁻¹v 在 1 的可达集中 (即 u⁻¹v ∈ Ad 1 d)
+  let w := u⁻¹ * v
+  have h_w_in_Re : w ∈ ReachableSet 1 d := by use dv
+  -- 利用 z 的极大性
+  apply CurveNeighborhood_max hz w h_w_in_Re
 
 theorem lemma_3_5 (u v : Vertex) (d : Degree) :
     v ∈ CurveNeighborhood u d → (u⁻¹ * v) ∈ Ad u d := by
