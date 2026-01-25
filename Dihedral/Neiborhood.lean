@@ -338,6 +338,14 @@ def s_alpha_d (d : Degree) : Vertex := s_α (root_from_degree d)
 def s0s1_pow (a : ℕ) : Vertex := listToGroup (alternating 0 (2 * a))
 def s1s0_pow (a : ℕ) : Vertex := listToGroup (alternating 1 (2 * a))
 
+
+lemma s0s1_pow_equiv (a : ℕ) : s0s1_pow a = (s0*s1)^a := by
+  simp [s0s1_pow, s0, s1]
+
+lemma s1s0_pow_equiv (a : ℕ) : s1s0_pow a = (s1*s0)^a := by
+  simp [s1s0_pow, s0, s1]
+
+
 -- 辅助定义：计算交替字序列中的最后一个生成元索引
 -- 如果序列长度为 n，起始为 s，则第 n 个元素（从 0 开始计数）是 s + n (mod 2)
 def last_index (s : Fin 2) (n : ℕ) : Fin 2 :=
@@ -466,13 +474,100 @@ theorem curve_neighborhood_eq_max_Ad_identity (d : Degree) :
       apply h_in_Ad.2 x h_x_in_Ad h_v_lt_x
 
 -- 结论 B: Theorem 3.3 的具体计算公式
+
+theorem theorem_3_3_eq (d : Degree) (p : d.a = d.b) :
+  CurveNeighborhood 1 d = { s0s1_pow d.a, s1s0_pow d.a } := by
+  rw [curve_neighborhood_eq_max_Ad_identity]
+  have h := lemma_3_1_3 d.a ;
+  ext v
+  specialize h v
+  simp_all only [Set.mem_setOf_eq, Set.mem_insert_iff, Set.mem_singleton_iff]
+  have hf : d = { a := d.b, b := d.b } := by
+    ext <;> simp[p]
+  rw [← hf] at h
+  rw [h, s0s1_pow_equiv ,s1s0_pow_equiv]
+
+lemma s_alpha_d_maximal (d : Degree) (p : d.a ≠ d.b) :
+  IsMaximalIn (s_alpha_d d) (Ad 1 d) := by
+  by_cases h : d.a > d.b
+  · simp only [s_alpha_d, s_α, root_from_degree, gt_iff_lt, h, ↓reduceIte, lt_add_iff_pos_right,
+    zero_lt_one, Fin.isValue, lemma_3_hl, Degreele_le_def]
+    simp only [Fin.isValue, show d.b + 1 + d.b = 2 * d.b + 1 by omega, alternating_prod_odd,
+      ↓reduceIte]
+    refine ⟨?_, ?_⟩
+    · simp[getDegree_sr]
+      omega
+    · intro v p w
+      cases v with
+      | r n =>
+        have k: sr (-↑d.b) < r n := by
+          change (Lt _ _) ∨ _ at w
+          simp only [reduceCtorEq, or_false] at w
+          exact w
+        simp only [lemma_2_3, length_sr, gt_iff_lt, Left.neg_pos_iff, length_r] at k
+        simp only [Set.mem_setOf_eq, getDegree_r] at p
+        change ℤ at *
+        grind
+      | sr n =>
+        by_contra k
+        have k : ℓ (sr (-↑d.b)) < ℓ (sr n) := by
+          rw [← lemma_2_3]; exact Std.lt_of_le_of_ne w k
+        simp_all only [length_sr']
+        simp_all only [ne_eq, gt_iff_lt, Set.mem_setOf_eq, getDegree_sr, sr.injEq, mul_neg]
+        change ℤ at *
+        omega
+  · simp only [s_alpha_d, s_α, root_from_degree, gt_iff_lt, h, ↓reduceIte, add_lt_iff_neg_left,
+    _root_.not_lt_zero, Fin.isValue]
+    simp only [Fin.isValue, show d.a + (d.a + 1) = 2 * d.a + 1 by omega, alternating_prod_odd,
+      one_ne_zero, ↓reduceIte, lemma_3_hl, Degreele_le_def]
+    refine ⟨?_, ?_⟩
+    · simp[getDegree_sr]
+      omega
+    · intro v p w
+      cases v with
+      | r n =>
+        have k: sr (d.a + 1 : ℤ) < r n := by
+          change (Lt _ _) ∨ _ at w
+          simp only [reduceCtorEq, or_false] at w
+          exact w
+        simp only [lemma_2_3, length_sr, gt_iff_lt, Int.succ_ofNat_pos, ↓reduceIte, length_r] at k
+        simp only [Set.mem_setOf_eq, getDegree_r] at p
+        change ℤ at *
+        grind
+      | sr n =>
+        by_contra k
+        have k : ℓ (sr (d.a + 1 : ℤ)) < ℓ (sr n) := by
+          rw [← lemma_2_3]; exact Std.lt_of_le_of_ne w k
+        simp_all only [length_sr']
+        simp_all only [ne_eq, gt_iff_lt, not_lt, Set.mem_setOf_eq, getDegree_sr, sr.injEq]
+        change ℤ at *
+        omega
+
+theorem theorem_3_3_neq (d : Degree) (p : d.a ≠ d.b) :
+    CurveNeighborhood 1 d = { s_alpha_d d } := by
+    rw [curve_neighborhood_eq_max_Ad_identity]
+    ext v
+    have h := lemma_3_1_2 v _ p;
+    constructor
+    · simp only [Set.mem_setOf_eq, Set.mem_singleton_iff]
+      intro w
+      rcases h with ⟨w1,w2,q⟩
+      simp at q
+      simp [q _ (s_alpha_d_maximal _ p), q _ w]
+    · intro w
+      simp at *
+      simp [w, (s_alpha_d_maximal _ p)]
+
+
 theorem theorem_3_3 (d : Degree) :
     CurveNeighborhood 1 d =
-      if d.a ≠ d.b then
-        { s_alpha_d d }
+      if d.a = d.b then
+        { s0s1_pow d.a, s1s0_pow d.a }
       else
-        { s0s1_pow d.a, s1s0_pow d.a } := by
-  sorry
+        { s_alpha_d d } := by
+        split_ifs with h
+        · exact theorem_3_3_eq d h
+        · exact theorem_3_3_neq d h
 
 lemma edge_left_mul (g u v : Vertex) (α : Root) (h : IsEdge u v α) :
     IsEdge (g * u) (g * v) α := by
@@ -564,8 +659,7 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) :
         Nat.lt_of_le_of_ne h_le h_not_eq
       sorry
 
-  ·
-    sorry
+  · sorry
 
 -- 辅助引理：Ad u d 中的元素必然在 Ad 1 d 中
 lemma Ad_subset_Ad_one (u : Vertex) (d : Degree) (v : Vertex) (h : v ∈ Ad u d) : v ∈ Ad 1 d := by
