@@ -17,7 +17,8 @@ def alternating (start : Fin 2) (n : ℕ) : List (Fin 2) :=
   match n with
   | .zero => []
   | .succ k => start :: alternating (start + 1) k
---后面发现可用alternatingWord替代
+--可用alternatingWord替代，可能用alternatingWord后面会更轻松。
+#check alternatingWord
 -- 验证交替列表
 lemma alternating_chain (s : Fin 2) (n : ℕ) :
     List.IsChain (· ≠ ·) (alternating s n) := by
