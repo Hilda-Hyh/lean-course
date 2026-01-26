@@ -280,7 +280,7 @@ theorem lemma_3_1_3 (a : ℕ) (v : Vertex) :
     · rintro ⟨h_in, h_max⟩
       constructor
       · exact h_in
-      · -- 反证：如果长度小于 2a，则它肯定小于 r a (因为 r a 在 S 中且长度更大)
+      · -- 反证：如果长度小于 2a，则它肯定小于 r a
         by_contra h_len_ne
         have h_len_lt : ℓ v < 2 * a := lt_of_le_of_ne (h_len_le v h_in) h_len_ne
         -- 构造一个长度为 2a 的元素 w = r a
@@ -338,13 +338,11 @@ def s_alpha_d (d : Degree) : Vertex := s_α (root_from_degree d)
 def s0s1_pow (a : ℕ) : Vertex := listToGroup (alternating 0 (2 * a))
 def s1s0_pow (a : ℕ) : Vertex := listToGroup (alternating 1 (2 * a))
 
-
 lemma s0s1_pow_equiv (a : ℕ) : s0s1_pow a = (s0*s1)^a := by
   simp [s0s1_pow, s0, s1]
 
 lemma s1s0_pow_equiv (a : ℕ) : s1s0_pow a = (s1*s0)^a := by
   simp [s1s0_pow, s0, s1]
-
 
 -- 辅助定义：计算交替字序列中的最后一个生成元索引
 -- 如果序列长度为 n，起始为 s，则第 n 个元素（从 0 开始计数）是 s + n (mod 2)
@@ -474,7 +472,6 @@ theorem curve_neighborhood_eq_max_Ad_identity (d : Degree) :
       apply h_in_Ad.2 x h_x_in_Ad h_v_lt_x
 
 -- 结论 B: Theorem 3.3 的具体计算公式
-
 theorem theorem_3_3_eq (d : Degree) (p : d.a = d.b) :
   CurveNeighborhood 1 d = { s0s1_pow d.a, s1s0_pow d.a } := by
   rw [curve_neighborhood_eq_max_Ad_identity]
@@ -558,7 +555,6 @@ theorem theorem_3_3_neq (d : Degree) (p : d.a ≠ d.b) :
       simp at *
       simp [w, (s_alpha_d_maximal _ p)]
 
-
 theorem theorem_3_3 (d : Degree) :
     CurveNeighborhood 1 d =
       if d.a = d.b then
@@ -568,6 +564,31 @@ theorem theorem_3_3 (d : Degree) :
         split_ifs with h
         · exact theorem_3_3_eq d h
         · exact theorem_3_3_neq d h
+
+def ends_in_s0 (u : D∞) : Prop := (reducedWord u).getLast? = some 0
+def starts_with_s1 (v : D∞) : Prop := (reducedWord v).head? = some 1
+
+lemma s_alpha_starts_with (α : Root) :
+    (reducedWord (s_α α)).head? = some (if α.a > α.b then 0 else 1) := by
+  dsimp [s_α]
+  split_ifs with h
+  · simp [List.head?, listToGroup, alternating, reducedWord]
+    sorry
+  · sorry
+
+lemma length_add_of_ends_s0_starts_s1 (u v : Vertex)
+  (hu : ends_in_s0 u) (hv : starts_with_s1 v) : ℓ (u * v) = ℓ u + ℓ v := by
+  sorry
+
+lemma degree_of_s_alpha (α : Root) : φ (s_α α) = α.toDegree := φ_s_alpha_eq α
+
+theorem theorem_3_2_eq_4 (u : Vertex) (d : Degree) (hu : ends_in_s0 u) :
+  IsMaximalIn
+    (if d.a = d.b then s1 * s_alpha_d (d.sub {a:=0, b:=1})
+     else if d.b > d.a then s_alpha_d d
+     else s0 * s_alpha_d d)
+    (Ad u d) := by
+  sorry
 
 lemma edge_left_mul (g u v : Vertex) (α : Root) (h : IsEdge u v α) :
     IsEdge (g * u) (g * v) α := by
@@ -612,18 +633,18 @@ theorem lemma_3_4_a_1 (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
   exact CurveNeighborhood_max hv (u * z) h_uz_in_Re
 
 theorem lemma_3_4_a_2 (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
-    (hz : z ∈ Ad 1 d) (hv : v ∈ CurveNeighborhood u d) :
+     (hv : v ∈ CurveNeighborhood u d) :
    φ (u⁻¹ * v) ≤ d := by
   have h_v_reachable : v ∈ ReachableSet u d := by
     rw [CurveNeighborhood] at hv
     exact hv.1
   rcases h_v_reachable with ⟨dv, h_chain_v, h_dv_le_d⟩
-  -- 将链左乘 u⁻¹
+  -- 链左乘 u⁻¹
   have h_chain_inv_u_v : HasChain (u⁻¹ * u) (u⁻¹ * v) dv := chain_left_mul u⁻¹ u v dv h_chain_v
   simp only [inv_mul_cancel] at h_chain_inv_u_v
-  -- 根据 Lemma 2.5 (b)，如果存在 1 -> w 的链，度数为 dv，则 φ(w) ≤ dv
+  -- Lemma 2.5 (b)
   have h_phi_le_dv := lemma_2_5_b 1 (u⁻¹ * v) dv h_chain_inv_u_v
-  -- 结合 dv ≤ d，得 φ(u⁻¹v) ≤ d
+  -- 结合 dv ≤ d →  φ(u⁻¹v) ≤ d
   simp only [inv_one, one_mul, Degreele_le_def] at h_phi_le_dv
   exact le_trans h_phi_le_dv h_dv_le_d
 
@@ -636,53 +657,68 @@ theorem lemma_3_4_b (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
   -- 链左乘 u⁻¹
   have h_chain_inv : HasChain (u⁻¹ * u) (u⁻¹ * v) dv := chain_left_mul u⁻¹ u v dv h_chain_v
   simp only [inv_mul_cancel] at h_chain_inv
-  -- 证明 u⁻¹v 在 1 的可达集中 (即 u⁻¹v ∈ Ad 1 d)
+  --  u⁻¹v ∈ 1 的ReachableSet
   let w := u⁻¹ * v
   have h_w_in_Re : w ∈ ReachableSet 1 d := by use dv
-  -- 利用 z 的极大性
+  -- z 的极大性
   apply CurveNeighborhood_max hz w h_w_in_Re
 
-theorem lemma_3_5 (u v : Vertex) (d : Degree) :
-    v ∈ CurveNeighborhood u d → (u⁻¹ * v) ∈ Ad u d := by
-  intro hv
-  constructor
-  · by_cases hu : u = 1
-    · simp [hu]
-    · -- 对于 u ≠ 1，使用反证法
-      by_contra h_not_eq
+theorem lemma_3_5 (u v : Vertex) (d : Degree) (hv : v ∈ CurveNeighborhood u d) :
+    (u⁻¹ * v) ∈ Ad u d := by
+  sorry
 
-      have h_le : ℓ (u * (u⁻¹ * v)) ≤ ℓ u + ℓ (u⁻¹ * v) :=
-        cs.length_mul_le u (u⁻¹ * v)
-      simp only [mul_inv_cancel_left] at h_le h_not_eq
-
-      have h_strict : ℓ v < ℓ u + ℓ (u⁻¹ * v) :=
-        Nat.lt_of_le_of_ne h_le h_not_eq
-      sorry
-
-  · sorry
-
--- 辅助引理：Ad u d 中的元素必然在 Ad 1 d 中
-lemma Ad_subset_Ad_one (u : Vertex) (d : Degree) (v : Vertex) (h : v ∈ Ad u d) : v ∈ Ad 1 d := by
+-- Ad u d 中的元素必然在 Ad 1 d 中
+lemma Ad_u_in_Ad_one (u : Vertex) (d : Degree) (v : Vertex) (h : v ∈ Ad u d) : v ∈ Ad 1 d := by
   rw [Ad] at *
   simp only [one_mul, cs.length_one, zero_add, Set.mem_setOf_eq]
   exact And.imp_left (fun a ↦ trivial) h
 
--- 引理：有限偏序集中，任意元素都小于等于某个极大元
+-- 存在极大元
 lemma exists_max_in_Ad (u : Vertex) (d : Degree) (z : Vertex) (hz : z ∈ Ad u d) :
     ∃ w, IsMaximalIn w (Ad u d) ∧ z ≤ w := by
-  --使用lemma 3.1分类
-  sorry
+  -- 定义 Ad u d 中大于等于 z 的子集
+  let S_ge_z := { w ∈ Ad u d | z ≤ w }
+  -- 该子集有限
+  have h_fin : S_ge_z.Finite := h_finite.subset (Set.sep_subset _ _)
+  -- 非空 (z 自身在里面)
+  have h_nonempty : S_ge_z.Nonempty := ⟨z, hz, le_refl z⟩
+  -- 必存在极大元
+  obtain ⟨m, ⟨hm_in_Ad, h_z_le_m⟩, hm_max_in_subset⟩ :=
+    Set.Finite.exists_maximalFor (id) S_ge_z h_fin h_nonempty
+  use m
+  constructor
+  · rw [IsMaximalIn]
+    constructor
+    · exact hm_in_Ad
+    · intro v' hv' hm_le_v'
+      have h_v'_in_subset : v' ∈ S_ge_z := by
+        constructor
+        · exact hv'
+        · exact le_trans h_z_le_m hm_le_v'
+      have := hm_max_in_subset h_v'_in_subset hm_le_v'
+      simp only [id_eq] at this
+      exact le_antisymm hm_le_v' this
+  · exact h_z_le_m
 
--- 引理：如果 w ∈ Ad u d，则 u * w 在 d 范围内可达
+-- 引理：如果 w ∈ Ad u d，则 u * w 在 d 范围内Reachable
 lemma reachable_of_Ad (u : Vertex) (d : Degree) (w : Vertex) (h : w ∈ Ad u d) :
-    u*w ∈ ReachableSet u  d := by
-  sorry
+    u * w ∈ ReachableSet u d := by
+  have c1 := trivial_chain w
+  -- 左乘 u
+  have c2 := chain_left_mul u 1 w (getDegree w) c1
+  simp only [mul_one] at c2
+  --  u*w in ReachableSet u d
+  use getDegree w
+  exact ⟨c2, h.2⟩
 
--- 如果 x, y 都在 Ad u d 中（即长度对 u 可加），则 x ≤ y ↔ u * x ≤ u * y
+def lastGen (g : D∞) : Option (Fin 2) := (reducedWord g).getLast?
+def firstGen (g : D∞) : Option (Fin 2) := (reducedWord g).head?
+
+-- 如果 x, y 都在 Ad u d 中，则 x ≤ y ↔ u * x ≤ u * y
 lemma mul_le_mul_left_of_length_add (u : Vertex) (x y : Vertex)
-    (hx : ℓ (u * x) = ℓ u + ℓ x)
-    (hy : ℓ (u * y) = ℓ u + ℓ y) :
+    (hx : ℓ (u * x) = ℓ u + ℓ x) (hy : ℓ (u * y) = ℓ u + ℓ y) :
     x ≤ y ↔ u * x ≤ u * y := by
+  simp [length_eq, ] at hx
   sorry
 
 lemma Lt_iff_le_and_ne (a b : Vertex) : Lt a b ↔ a ≤ b ∧ a ≠ b := by
@@ -696,44 +732,156 @@ lemma Lt_iff_le_and_ne (a b : Vertex) : Lt a b ↔ a ≤ b ∧ a ≠ b := by
     · exact h_lt
     · contradiction
 
+-- 引理：ReachableSet中的任意元素都受某个极大元支配
+-- 依赖于有限性
+lemma exists_max_ge_in_Reachable (u : Vertex) (d : Degree) (v : Vertex)
+    (h : v ∈ ReachableSet u d) :
+    ∃ m, m ∈ CurveNeighborhood u d ∧ v ≤ m := by
+  -- 定义受控集
+  let S_bound := { x : Vertex | φ (u⁻¹ * x) ≤ d }
+  --  S_bound 是有限的
+  have h_bound_finite : S_bound.Finite := by
+    let pre_image := { y : Vertex | φ y ≤ d }
+    have h_pre_finite : pre_image.Finite := by
+
+      sorry
+    have : S_bound = (fun y => u * y) '' pre_image := by
+       ext x; simp [S_bound, pre_image]
+    rw [this]
+    exact Set.Finite.image _ h_pre_finite
+  -- 证明 ReachableSet u d ⊆ S_bound
+  have h_subset : ReachableSet u d ⊆ S_bound := by
+    intro x hx
+    rcases hx with ⟨dx, chain, h_dx_le_d⟩
+    -- 左乘 u⁻¹
+    have chain_inv := chain_left_mul u⁻¹ u x dx chain
+    simp only [inv_mul_cancel] at chain_inv
+    -- Lemma 2.5(b): 若存在 1 -> y 的链，则 φ(y) ≤ degree
+    have h_phi := lemma_2_5_b 1 (u⁻¹ * x) dx
+    simp only [inv_one, one_mul] at h_phi
+    exact le_trans (h_phi chain_inv) h_dx_le_d
+  -- def ReachableSet 中大于等于 v 的子集
+  let S_ge_v := { m ∈ ReachableSet u d | v ≤ m }
+  -- 有限性与非空性
+  have h_fin_sub : S_ge_v.Finite :=by
+    apply Set.Finite.subset h_bound_finite
+    intro x ⟨hx_reach, _⟩
+    exact h_subset hx_reach
+  have h_nonempty : S_ge_v.Nonempty := ⟨v, h, le_refl v⟩
+  -- 取极大元
+  obtain ⟨m, ⟨hm_reach, h_v_le_m⟩, hm_max⟩ :=
+    Set.Finite.exists_maximalFor id S_ge_v h_fin_sub h_nonempty
+  use m
+  constructor
+  · rw [CurveNeighborhood]
+    constructor
+    · exact hm_reach
+    · intro v' hv' hm_le_v'
+      have h_v'_in_S : v' ∈ S_ge_v := ⟨hv', le_trans h_v_le_m hm_le_v'⟩
+      have := hm_max  h_v'_in_S hm_le_v'
+      simp only [id_eq] at this
+      exact le_antisymm hm_le_v' this
+  · exact h_v_le_m
 
 theorem main_theorem (u : Vertex) (d : Degree) :
     CurveNeighborhood u d = { v | ∃ w, IsMaximalIn w (Ad u d) ∧ v = u * w } := by
   apply Set.ext
   intro v
   constructor
-  · -- (⊆): v ∈ Ω_d(u) → v = u * w (w 为极大元)
-    intro hv
-    -- 根据 Lemma 3.5, z = u⁻¹v ∈ Ad u d
+  -- v ∈ Ω_d(u) → v = u * w (w 为极大元)
+  · intro hv
+    -- 由 Lemma 3.5, z = u⁻¹v ∈ Ad u d
     have h_z_in_Ad : (u⁻¹ * v) ∈ Ad u d := lemma_3_5 u v d hv
     let z := u⁻¹ * v
+    have h_v_eq : v = u * z := by simp [z]
+    -- 在 Ad u d 中存在极大元 w 使得 z ≤ w
     obtain ⟨w, hw_max, h_z_le_w⟩ := exists_max_in_Ad u d z h_z_in_Ad
-    have hw_in_Ad1 : w ∈ Ad 1 d := Ad_subset_Ad_one u d w hw_max.1
-    -- 应用 Lemma 3.4.a 得到长度不等式
+    have hw_in_Ad1 : w ∈ Ad 1 d := Ad_u_in_Ad_one u d w hw_max.1
+    -- Lemma 3.4(a): ℓ(uw) ≤ ℓ(v)
     have h_len_uw_le_v := lemma_3_4_a_1 u d w v hw_in_Ad1 hv
+    -- v = u * z, z ∈ Ad u d => ℓ(v) = ℓ(u) + ℓ(z)
     have h_len_v : ℓ v = ℓ u + ℓ z := by
-      have : v = u * z := by simp [z]
-      rw [this]
+      rw [h_v_eq]
       exact h_z_in_Ad.1
+    -- w ∈ Ad u d => ℓ(uw) = ℓ(u) + ℓ(w)
     have h_len_uw : ℓ (u * w) = ℓ u + ℓ w := hw_max.1.1
+    -- 结合ℓ(u) + ℓ(w) ≤ ℓ(u) + ℓ(z) => ℓ(w) ≤ ℓ(z)
     rw [h_len_v, h_len_uw] at h_len_uw_le_v
     have h_len_w_le_z : ℓ w ≤ ℓ z := Nat.le_of_add_le_add_left h_len_uw_le_v
+    --z ≤ w 且 ℓ(w) ≤ ℓ(z) => z = w
     have h_z_eq_w : z = w := by
-      rcases h_z_le_w with h|h'
-      · exfalso
-        have : z < w := h
-        rw [lemma_2_3] at this
-        linarith
-      · exact h'
+      by_contra h_neq
+      have h_lt : z < w := lt_of_le_of_ne h_z_le_w h_neq
+      have h_len_lt : ℓ z < ℓ w := by
+        rw [← lemma_2_3]
+        exact h_lt
+      linarith [h_len_lt, h_len_w_le_z]
     use w
     constructor
     · exact hw_max
-    · simp only [z] at h_z_eq_w
-      rw [← h_z_eq_w, mul_inv_cancel_left]
-  · --  (⊇): v = u * w (w 为极大元) → v ∈ Ω_d(u)
-    rintro ⟨w, hw_max, rfl⟩
-    have h_reach : u * w ∈ ReachableSet u  d := reachable_of_Ad u d w hw_max.1
+    · rw [h_v_eq, h_z_eq_w]
+  --  (⊇): v = u * w (w 为极大元) → v ∈ Ω_d(u)
+  · rintro ⟨w, hw_max, rfl⟩
+    -- reachable
+    have h_reach : u * w ∈ ReachableSet u d := reachable_of_Ad u d w hw_max.1
+    -- maximal
+    rw [CurveNeighborhood]
     constructor
     · exact h_reach
-    · intro v' h_reach_v' h_lt_v_v'
-      sorry
+    · intro v' h_reach_v' h_le_v_v'
+      -- 若存在 v' reachable且 u*w ≤ v', v'被某个极大元支配
+      obtain ⟨m, hm_max, h_v'_le_m⟩ := exists_max_ge_in_Reachable u d v' h_reach_v'
+      have h_m_in_gamma : m ∈ CurveNeighborhood u d := hm_max
+      have h_z'_in_Ad : (u⁻¹ * m) ∈ Ad u d := lemma_3_5 u m d h_m_in_gamma
+      let w' := u⁻¹ * m
+      have h_m_eq : m = u * w' := by simp [w']
+      -- u*w ≤ v' ≤ m => u*w ≤ m => u*w ≤ u*w'
+      have h_uw_le_uw' : u * w ≤ u * w' :=
+          le_trans h_le_v_v' (by rw [h_m_eq] at h_v'_le_m; exact h_v'_le_m)
+      --w w' ∈ Ad，左乘保序
+      have h_w_le_w' : w ≤ w' := by
+        rw [← mul_le_mul_left_of_length_add u w w' hw_max.1.1 h_z'_in_Ad.1] at h_uw_le_uw'
+        exact h_uw_le_uw'
+      -- 利用 w 的极大性
+      have h_w_eq_w' : w = w' :=
+        hw_max.2 w' h_z'_in_Ad h_w_le_w'
+      -- w = w' => u*w = u*w' => v = m
+      have h_v_eq_m : u * w = m := by rw [h_m_eq, ←h_w_eq_w']
+      -- u*w ≤ v' ≤ m ∧ u*w = m => v' = m = u*w
+      have h_v'_eq_v : v' = u * w := by
+        have h_m_eq_uw : m = u * w := h_v_eq_m.symm
+        rw [h_m_eq_uw] at h_v'_le_m
+        exact le_antisymm h_v'_le_m h_le_v_v'
+      rw [h_v'_eq_v]
+
+example : CurveNeighborhood 1 {a := 2, b := 2} = { s0s1_pow 2, s1s0_pow 2 } := by
+  rw [theorem_3_3_eq {a := 2, b := 2} rfl]
+--listToGroup (alternating 0 6) = r 3
+example : CurveNeighborhood s0 {a := 2, b := 3} = {listToGroup (alternating 0 6)} := by
+  rw [main_theorem s0 {a := 2, b := 3}]
+  have h_ends : ends_in_s0 s0 := by
+    simp only [ends_in_s0, reducedWord, s0, gt_iff_lt, lt_self_iff_false, ↓reduceIte, alternating,
+      Fin.isValue, zero_add, Int.natAbs_zero, mul_zero, List.getLast?_singleton]
+  have h_u_ne_1 : s0 ≠ 1 := by
+    intro h
+    have h_len : ℓ s0 = ℓ 1 := by rw [h]
+    simp [length_s0, length_one] at h_len
+  have h_max := theorem_3_2_eq_4 s0 {a := 2, b := 3} h_ends
+  rw [if_neg (by norm_num), if_pos (by norm_num)] at h_max
+  have h_unique := lemma_3_1_1 s0 {a := 2, b := 3} h_u_ne_1
+  ext v
+  simp only [Set.mem_setOf_eq, Set.mem_singleton_iff]
+  constructor
+  · rintro ⟨w, hw_is_max, rfl⟩
+    have h_w_eq : w = s_alpha_d {a := 2, b := 3} := by
+      rcases h_unique with ⟨m, hm, h_uniq_eq⟩
+      have h1 : w = m :=by exact h_uniq_eq w hw_is_max
+      have h2 : s_alpha_d {a := 2, b := 3} = m := h_uniq_eq _ h_max
+      rw [h1, h2]
+    rw [h_w_eq]
+    unfold s_alpha_d s_α
+    dsimp only [root_from_degree]
+    simp only [Fin.isValue, gt_iff_lt, reduceLT, ↓reduceIte, reduceAdd]
+    simp [alternating, listToGroup, f, s0]
+  · rintro rfl
+    exists s_alpha_d {a := 2, b := 3}
