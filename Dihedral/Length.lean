@@ -204,7 +204,7 @@ def explicit_length : D∞ → ℕ
 lemma ex_length_one : explicit_length 1 = 0 := by
   rfl
 
--- 这证明了 explicit_length 满足三角不等式的一半，也即 Lipschtiz 性质
+-- 证明 explicit_length 满足三角不等式的一半，也即 Lipschtiz 性质
 lemma explicit_length_mul_le (i : Fin 2) (g : D∞) :
     explicit_length (f i * g) ≤ explicit_length g + 1 := by
   fin_cases i
@@ -222,14 +222,12 @@ lemma explicit_length_mul_le (i : Fin 2) (g : D∞) :
       simp only [Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero, sr_mul_sr, sub_zero]
       dsimp [explicit_length]
       split_ifs with h
-      · -- k > 0
-        rw [Nat.sub_add_cancel]
+      · rw [Nat.sub_add_cancel]
         have hk : 1 ≤ Int.natAbs k := by
           have : Int.natAbs k > 0 := Int.natAbs_pos.mpr (ne_of_gt h)
           omega
         nlinarith
-      · -- k <= 0
-        apply Nat.le_succ_of_le
+      · apply Nat.le_succ_of_le
         apply Nat.le_succ
   · simp only [f, s1]
     cases g with
@@ -239,8 +237,7 @@ lemma explicit_length_mul_le (i : Fin 2) (g : D∞) :
       dsimp [explicit_length]
       let k_int : ℤ := k
       by_cases hk : k_int ≥ 0
-      · -- k >= 0, 1+k > 0
-        have h_pos : 1 + k_int > 0 := by linarith
+      · have h_pos : 1 + k_int > 0 := by linarith
         rw [if_pos h_pos]
         have : (1 + k).natAbs = 1 + k.natAbs := by
           rw [Int.natAbs_add_of_nonneg]
@@ -249,8 +246,7 @@ lemma explicit_length_mul_le (i : Fin 2) (g : D∞) :
           exact hk
         rw [this, Nat.mul_add, mul_one]
         omega
-      · -- k < 0
-        push_neg at hk
+      · push_neg at hk
         by_cases hk1 : k = -1
         · subst hk1; simp
         · have h_nonpos : 1 + k_int ≤ 0 := by linarith
@@ -317,7 +313,7 @@ lemma explicit_length_alternating (s : Fin 2) (n : ℕ) :
       omega
   | n + 2 => omega
 
--- 最终：alternating s n 的长度确实为 n
+-- alternating s n 的长度为 n
 lemma alternating_isReduced (s : Fin 2) (n : ℕ) :
     cs.IsReduced (alternating s n) := by
   dsimp [CoxeterSystem.IsReduced]
@@ -331,7 +327,7 @@ lemma alternating_isReduced (s : Fin 2) (n : ℕ) :
     exact cs_length_ge_explicit g
   exact le_antisymm h_le h_ge
 
--- 所有交替列表都是最短的
+-- alternating Isreduced
 lemma length_alternating (s : Fin 2) (n : ℕ) :
     ℓ (listToGroup (alternating s n)) = n := by
   have h_g : listToGroup (alternating s n) = cs.wordProd (alternating s n) := (h_wp _).symm
@@ -404,14 +400,12 @@ theorem D_induction {P : D∞ → Prop}
     simp only [h_wp, listToGroup, map_append, map_cons, map_nil, prod_append, prod_cons, prod_nil,
       mul_one]
     fin_cases i
-    · -- i = 0 的情况
-      simp only [Fin.zero_eta, Fin.isValue]
+    · simp only [Fin.zero_eta, Fin.isValue]
       rw [show f 0 = s0 by rfl]
       apply h_s0
       simp_all only [h_wp]
       exact ih
-    · -- i = 1 的情况
-      simp only [Fin.mk_one, Fin.isValue]
+    · simp only [Fin.mk_one, Fin.isValue]
       rw [show f 1 = s1 by rfl]
       apply h_s1
       simp_all only [h_wp]
@@ -451,7 +445,7 @@ theorem induction_on_alternating {P : D∞ → Prop}
     · exact h_all _ 1
     · exact h_all _ 0
 
---D∞ 的 Alternating 分类原理：
+--D∞ 的 Alternating induction
 theorem alternating_cases {P : D∞ → Prop}
     (h : ∀ (s : Fin 2) (n : ℕ), P (listToGroup (alternating s n))) :
     ∀ g, P g := by

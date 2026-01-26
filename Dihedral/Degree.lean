@@ -13,7 +13,7 @@ deriving DecidableEq
 def α0 : Root := ⟨1, 0, Or.inl rfl⟩
 def α1 : Root := ⟨0, 1, Or.inr rfl⟩
 
--- 根的长度定义为 a + b
+-- 根的长度为 a + b
 def Root.length (α : Root) : ℕ := α.a + α.b
 
 lemma lemma_2_1_1 (u : D∞) : ℓ u = ℓ u⁻¹ :=
@@ -59,7 +59,6 @@ instance : Add Degree where
 instance : Zero Degree where
   zero := ⟨0, 0⟩
 
--- 定义标量乘法
 def Degree.scale (n : ℕ) (d : Degree) : Degree :=
   ⟨n * d.a, n * d.b⟩
 
@@ -74,7 +73,7 @@ theorem Degree.ext {d1 d2 : Degree} (h0 : d1.a = d2.a) (h1 : d1.b = d2.b) : d1 =
   cases d1; cases d2
   simp only at h0 h1
   rw [h0, h1]
-
+@[simp]
 instance : AddCommMonoid Degree where
   add := (· + ·)
   zero := 0
@@ -123,7 +122,7 @@ lemma getDegree_one : getDegree (1 : D∞) = ⟨0, 0⟩ := by
 
 def Root.toDegree (α : Root) : Degree :=⟨α.a, α.b⟩
 
--- 定义顶点 (Vertices)。在 D∞ 的情况下，顶点是群元素
+-- def顶点 (Vertices)。在 D∞ 的情况下，顶点是群元素
 abbrev Vertex := D∞
 
 -- 将根映射到 D∞ 中的反射元素
@@ -170,7 +169,7 @@ inductive HasChain : Vertex → Vertex → Degree → Prop where
   | step {u v w : Vertex} {d : Degree} {α : Root} :
       HasChain u v d → IsEdge v w α → HasChain u w (d + α.toDegree)
 
--- 递增链：在每一步步进时增加 ℓ w > ℓ v 的判断
+-- 在每一步步进时增加 ℓ w > ℓ v 的判断
 inductive HasIncreasingChain : Vertex → Vertex → Degree → Prop where
   | refl (u : Vertex) : HasIncreasingChain u u 0
   | step {u v w : Vertex} {d : Degree} {α : Root} :
@@ -270,8 +269,7 @@ instance : PartialOrder D∞ where
 
 lemma exists_root_eq_sr (k : ℤ) : ∃ α : Root, s_α α = sr k := by
   by_cases h : k > 0
-  · -- Case k > 0
-    let a := k.natAbs - 1
+  · let a := k.natAbs - 1
     let b := k.natAbs
     have h_sub : a = b - 1 := rfl
     have h_rel : b = a.succ := by
@@ -300,8 +298,7 @@ lemma exists_root_eq_sr (k : ℤ) : ∃ α : Root, s_α α = sr k := by
               simp [Nat.sub_add_cancel (Nat.succ_le_iff.mpr (Int.natAbs_pos.mpr (Int.ne_of_gt h)))]
       _ = k := by simpa using (le_of_lt h)
     rw [this]
-  · -- Case k ≤ 0
-    let a := k.natAbs + 1
+  · let a := k.natAbs + 1
     let b := k.natAbs
     have h_rel : a = b.succ := rfl
     let α : Root := ⟨a, b, Or.inl h_rel⟩
@@ -325,7 +322,7 @@ lemma exists_root_eq_sr (k : ℤ) : ∃ α : Root, s_α α = sr k := by
 lemma inv_mul_is_sr_of_parity_diff (u v : Vertex)
     (h_parity : (ℓ u) % 2 ≠ (ℓ v) % 2) :
     ∃ k : ℤ, u⁻¹ * v = sr k := by
-  -- D∞ 中元素要么是 r k 要么是 sr k
+  -- D∞ 中元素归纳
   let g := u⁻¹ * v
   cases hg : g with
   | sr k => use k
@@ -378,7 +375,6 @@ lemma lt_of_succ_length (u v : Vertex) (h : ℓ v = ℓ u + 1) : u < v := by
     exact lt_irrefl _ h_len_lt
   use (0 + α.toDegree)
 
-
 theorem lemma_2_3 (u v : Vertex) :
     u < v ↔ ℓ u < ℓ v := by
   constructor
@@ -416,7 +412,7 @@ theorem lemma_2_3 (u v : Vertex) :
         rw [cs.isRightDescent_iff] at h_descent
         exact Nat.eq_sub_of_add_eq h_descent
       have h_len_w : ℓ w = ℓ v - 1 := hi
-      -- 证明 u < w
+      --  u < w
       have h_u_lt_w : ℓ u < ℓ w := by
         rw [h_len_w, h_diff]
         have : n ≥ 1 := Nat.pos_of_ne_zero hn
@@ -434,23 +430,19 @@ theorem lemma_2_3 (u v : Vertex) :
         omega
       exact Lt_trans h_u_le_w h_w_lt_v
 notation "φ" => getDegree
--- This connects the Root structure to the φ function.
+
 lemma φ_s_alpha_eq (α : Root) : φ (s_α α) = α.toDegree := by
   simp only [s_α, Root.toDegree]
   split_ifs with h_gt
-  · -- a = b + 1
-    rcases α.sub_one with (h | h)
-    · -- a = b + 1
-      rw [h, succ_eq_add_one]
+  · rcases α.sub_one with (h | h)
+    · rw [h, succ_eq_add_one]
       rw [show α.b + 1 + α.b =2 * α.b + 1  by ring, alternating_prod_odd]
       simp only [getDegree, Fin.isValue, ↓reduceIte, Int.neg_nonneg, Int.natCast_nonpos_iff,
         neg_eq_zero, cast_eq_zero, Int.natAbs_neg, Int.natAbs_natCast, ite_eq_right_iff]
       intro h'
       simp [h']
-    · -- b = a + 1, contradicts a > b
-      linarith
-  · --  b = a + 1
-    rcases α.sub_one with (h | h)
+    · linarith
+  · rcases α.sub_one with (h | h)
     · linarith
     · rw [h, succ_eq_add_one, ← add_assoc]
       rw [show α.a + α.a + 1 =2 * α.a + 1  by ring, alternating_prod_odd]
@@ -459,7 +451,6 @@ lemma φ_s_alpha_eq (α : Root) : φ (s_α α) = α.toDegree := by
       have h_pos : (α.a : ℤ) + 1 ≥ 0 := by linarith
       simp [h_pos, getDegree, h_nezero]
       omega
-
 
 lemma getDegree_alternating_even (s : Fin 2) (k : ℕ) :
     φ (listToGroup (alternating s (2 * k))) = ⟨k, k⟩ := by
@@ -536,14 +527,14 @@ lemma degree_add_parity (g h : D∞) :
         grind
 
 
--- Main Lemma 2.5 Proof
+-- Lemma 2.5
 lemma lemma_2_5_a (u v : Vertex) (d : Degree) :
     HasChain u v d →
     ∃ (r s : ℕ), d.a = (φ (u⁻¹ * v)).a + 2 * r ∧
                  d.b = (φ (u⁻¹ * v)).b + 2 * s := by
   intro h
   induction h with
-  | refl =>-- u = v, d = 0
+  | refl =>
     use 0, 0
     rw [inv_mul_cancel u, getDegree_one]
     simp only [mul_zero, add_zero]
@@ -560,8 +551,7 @@ lemma lemma_2_5_a (u v : Vertex) (d : Degree) :
     have h_deg_t : φ t = α.toDegree := φ_s_alpha_eq α
     use r' + k,s' + m
     constructor
-    · -- for component a
-      dsimp [Add.add, Root.toDegree]
+    · dsimp [Add.add, Root.toDegree]
       change d'.a + α.a = (φ (u⁻¹ * w)).a + 2 * (r' + k)
       rw [h0', h_gw, show α.a = (α.toDegree).a by rfl]
       rw [← h_deg_t]
