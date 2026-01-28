@@ -728,9 +728,8 @@ lemma length_add_of_ends_s0_starts_s1 (u v : Vertex)
         exact (starts_with_s1_sr kv').mp this
       have h_pos : kv' - ku' > 0 := by linarith
       have h_natAbs : (kv' - ku').natAbs = kv'.natAbs + ku'.natAbs := by
-        rw [show kv' - ku' = kv' + (-ku') by ring]
-        rw [Int.natAbs_add_of_nonneg (le_of_lt hv') (by linarith : (0 : ℤ) ≤ -ku')]
-        rw [Int.natAbs_neg]
+        rw [show kv' - ku' = kv' + (-ku') by ring,
+        Int.natAbs_add_of_nonneg (le_of_lt hv') (by linarith : (0 : ℤ) ≤ -ku'), Int.natAbs_neg]
       simp only [r_mul_sr, length_r, length_sr]
       split_ifs with h1
       · rw [h_natAbs]; omega
@@ -760,9 +759,8 @@ lemma length_add_of_ends_s0_starts_s1 (u v : Vertex)
         have : starts_with_s1 (sr kv') := hv
         exact (starts_with_s1_sr kv').mp this
       have h_natAbs : (kv' - ku').natAbs = kv'.natAbs + ku'.natAbs := by
-        rw [show kv' - ku' = kv' + (-ku') by ring]
-        rw [Int.natAbs_add_of_nonneg (le_of_lt hv') (by linarith : (0 : ℤ) ≤ -ku')]
-        rw [Int.natAbs_neg]
+        rw [show kv' - ku' = kv' + (-ku') by ring,
+        Int.natAbs_add_of_nonneg (le_of_lt hv') (by linarith : (0 : ℤ) ≤ -ku'), Int.natAbs_neg]
       simp only [sr_mul_sr, length_r, length_sr]
       split_ifs with h1
       · exfalso; exact h_u_not_pos h1
@@ -1227,14 +1225,404 @@ theorem lemma_3_4_b (u : Vertex) (d : Degree) (z : Vertex) (v : Vertex)
   have h_chain_inv : HasChain (u⁻¹ * u) (u⁻¹ * v) dv := chain_left_mul u⁻¹ u v dv h_chain_v
   simp only [inv_mul_cancel] at h_chain_inv
   --  u⁻¹v ∈ 1 的ReachableSet
-  let w := u⁻¹ * v
+  set w := u⁻¹ * v with hw
   have h_w_in_Re : w ∈ ReachableSet 1 d := by use dv
   -- z 的极大性
   apply CurveNeighborhood_max hz w h_w_in_Re
 
 theorem lemma_3_5 (u v : Vertex) (d : Degree) (hv : v ∈ CurveNeighborhood u d) :
     (u⁻¹ * v) ∈ Ad u d := by
-  sorry
+  constructor
+  · by_cases hu_1 : u = 1
+    · simp [hu_1]
+    · by_contra h_eq1
+      simp only [mul_inv_cancel_left] at h_eq1
+      set w := u⁻¹ * v with hw_def
+      have h_le : ℓ v ≤ ℓ u + ℓ w := by
+        calc ℓ v = ℓ (u * w) := by simp [hw_def]
+             _ ≤ ℓ u + ℓ w := lemma_2_1_3 u w
+      have h_lt : ℓ v < ℓ u + ℓ w := lt_of_le_of_ne h_le h_eq1
+      -- ℓ u ≤ ℓ v
+      have h_u_le_v : ℓ u ≤ ℓ v := by
+        have h_u_reach : u ∈ ReachableSet u d := ⟨0, HasChain.refl u, by
+              simp only [Degreele_le_def]
+              constructor <;> exact le_of_ble_eq_true rfl⟩
+        exact CurveNeighborhood_max hv u h_u_reach
+      -- ℓ(u⁻¹ * v) = ℓ u + ℓ v 或 ℓ(u⁻¹ * v) = ℓ v - ℓ u
+      have h_inv_len : ℓ u⁻¹ = ℓ u := (lemma_2_1_1 u).symm
+      have h_inv_le : ℓ u⁻¹ ≤ ℓ v := by rw [h_inv_len]; exact h_u_le_v
+      have h_dichotomy := lemma_2_1_4 u⁻¹ v h_inv_le
+      rcases h_dichotomy with (h_add | h_sub)
+      · rw [h_inv_len] at h_add
+        -- 取 z ∈ Γ_d(1)
+        have h_Gamma_nonempty : (CurveNeighborhood 1 d).Nonempty := by
+          rw [theorem_3_3]
+          split_ifs with h
+          · exact ⟨s0s1_pow d.a, Set.mem_insert _ _⟩
+          · exact ⟨s_alpha_d d, Set.mem_singleton _⟩
+        obtain ⟨z, hz⟩ := h_Gamma_nonempty
+        have hz_Ad : z ∈ Ad 1 d := by
+          rw [curve_neighborhood_eq_max_Ad_identity] at hz
+          exact hz.1
+        have h_uz_le_v : ℓ (u * z) ≤ ℓ v := lemma_3_4_a_1 u d z v hz_Ad hv
+        have h_w_le_z : ℓ w ≤ ℓ z := lemma_3_4_b u d z v hz hv
+        have h_uv_le_z : ℓ u + ℓ v ≤ ℓ z := by rw [← h_add]; exact h_w_le_z
+        -- ℓ(u * z) < ℓ u + ℓ z
+        have h_uz_not_reduced : ℓ (u * z) < ℓ u + ℓ z := by
+          calc ℓ (u * z) ≤ ℓ v := h_uz_le_v
+               _ < ℓ u + ℓ w := h_lt
+               _ ≤ ℓ u + ℓ z := by linarith [h_w_le_z]
+        -- ℓ u ≥ 1
+        have h_u_pos : ℓ u ≥ 1 := by
+          by_contra h; push_neg at h
+          have : ℓ u = 0 := lt_one_iff.mp h
+          exact hu_1 ((length_eq_zero_iff cs).mp this)
+        -- z ≠ 1
+        have hz_ne : z ≠ 1 := by
+          intro h; rw [h, cs.length_one] at h_uv_le_z; linarith
+        have h_exists_z' : ∃ z' ∈ Ad 1 d, ℓ z' = ℓ z - 1 ∧ ℓ (u * z') = ℓ u + ℓ z' := by
+          obtain ⟨i, hi_left⟩ := cs.exists_leftDescent_of_ne_one hz_ne
+          set z' := cs.simple i * z with hz'_def
+          use z'
+          have hs : cs.simple i = f i := by fin_cases i <;> rfl
+          have h_z'_len : ℓ z' = ℓ z - 1 := by
+           rw [cs.isLeftDescent_iff] at hi_left
+           calc ℓ z' = ℓ (cs.simple i * z) := by rw [hz'_def]
+             _ = ℓ z - 1 := Nat.eq_sub_of_add_eq hi_left
+          have h_z'_deg : φ z' ≤ d := by
+            have hz_deg : φ z ≤ d := hz_Ad.2
+            suffices h : φ z' ≤ φ z by exact le_trans h hz_deg
+            rw [hz'_def, hs]
+            fin_cases i
+            · cases z with
+              | r k =>
+                simp only [f, s0, getDegree_r, Degreele_le_def,Fin.zero_eta,
+                    Fin.isValue, Matrix.cons_val_zero, sr_mul_r, zero_add]
+                have h_k_pos : (0 : ℤ) < k := by
+                  rw [cs.isLeftDescent_iff] at hi_left
+                  have hs0 : cs.simple 0 = s0 := rfl
+                  simp only [Fin.zero_eta, Fin.isValue, length_r] at hi_left
+                  rw [hs0, s0, sr_mul_r, zero_add, length_sr] at hi_left
+                  split_ifs at hi_left with hk <;> omega
+                constructor
+                · simp only [getDegree_sr]
+                  omega
+                · simp only [getDegree_sr]
+                  exact le_refl _
+              | sr k =>
+                simp only [f, s0, getDegree_sr, Degreele_le_def,Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero,
+                 sr_mul_sr, sub_zero, getDegree_r, le_refl, and_true]
+                have h_k_nonpos : (0 : ℤ) ≥ k:= by
+                  rw [cs.isLeftDescent_iff] at hi_left
+                  have hs0 : cs.simple 0 = s0 := rfl
+                  simp only [Fin.zero_eta, Fin.isValue, length_sr, gt_iff_lt] at hi_left
+                  rw [hs0, s0, sr_mul_sr, sub_zero, length_r] at hi_left
+                  split_ifs at hi_left with hk <;> omega
+                omega
+            · cases z with
+              | r k =>
+                simp only [f, s1, getDegree_r, Degreele_le_def, Fin.mk_one, Fin.isValue,
+                  Matrix.cons_val_one, Matrix.cons_val_fin_one, sr_mul_r]
+                have h_k_neg : (0 : ℤ) > k := by
+                  rw [cs.isLeftDescent_iff] at hi_left
+                  have hs1 : cs.simple 1 = s1 := rfl
+                  simp only [Fin.mk_one, Fin.isValue, length_r] at hi_left
+                  rw [hs1, s1, sr_mul_r, length_sr] at hi_left
+                  split_ifs at hi_left with hk <;> omega
+                constructor
+                · simp only [getDegree_sr]
+                  omega
+                · simp only [getDegree_sr]
+                  omega
+              | sr k =>
+                simp only [f, s1, getDegree_sr, Degreele_le_def, Fin.mk_one, Fin.isValue,
+                Matrix.cons_val_one, Matrix.cons_val_fin_one, sr_mul_sr, getDegree_r, le_refl, true_and]
+                have h_k_pos : (0 : ℤ) < k := by
+                  rw [cs.isLeftDescent_iff] at hi_left
+                  have hs1 : cs.simple 1 = s1 := rfl
+                  simp only [Fin.mk_one, Fin.isValue, length_sr, gt_iff_lt] at hi_left
+                  rw [hs1, s1, sr_mul_sr, length_r] at hi_left
+                  split_ifs at hi_left with hk <;> omega
+                have h_abs : (k - 1).natAbs = k.natAbs - 1 := by omega
+                rw [h_abs]
+                omega
+          have h_prod : ℓ (u * z') = ℓ u + ℓ z' := by
+            by_cases hz'_one : z' = 1
+            · simp [hz'_one]
+            · rw [hs] at hz'_def
+              fin_cases i
+              · have h_u_ends : ends_in_s0 u := by
+                  cases u with
+                  | r ku =>
+                    cases z with
+                    | r kz =>
+                      simp only [r_mul_r, length_r] at h_uz_not_reduced
+                      simp only [ends_in_s0_r]
+                      have h_kz_neg : (0 : ℤ) < kz := by
+                        rw [cs.isLeftDescent_iff] at hi_left
+                        have hs1 : cs.simple 0 = s0 := rfl
+                        simp only [Fin.zero_eta, Fin.isValue, length_r] at hi_left
+                        rw [hs1, s0, sr_mul_r, length_sr] at hi_left
+                        split_ifs at hi_left with hkz
+                        · exact Int.lt_of_add_lt_add_left hkz
+                        · exfalso
+                          omega
+                      by_contra h_ku_neg
+                      push_neg at h_ku_neg
+                      omega
+                    | sr kz =>
+                      simp only [r_mul_sr, length_r, length_sr] at h_uz_not_reduced
+                      simp only [ends_in_s0_r]
+                      have h_kz_neg : (0 : ℤ) ≥ kz := by
+                        rw [cs.isLeftDescent_iff] at hi_left
+                        have hs1 : cs.simple 0 = s0 := rfl
+                        simp only [Fin.zero_eta, Fin.isValue, length_sr] at hi_left
+                        rw [hs1, s0, sr_mul_sr, length_r] at hi_left
+                        split_ifs at hi_left with hkz
+                        · exfalso
+                          omega
+                        · exact Int.not_lt.mp hkz
+                      by_contra h_ku_neg
+                      push_neg at h_ku_neg
+                      split_ifs at h_uz_not_reduced <;> omega
+                  | sr ku =>
+                    cases z with
+                    | r kz =>
+                      simp only [length_r] at h_uz_not_reduced
+                      have h_kz_pos : (0 : ℤ) < kz := by
+                        rw [cs.isLeftDescent_iff] at hi_left
+                        have hs1 : cs.simple 0 = s0 := rfl
+                        simp only [Fin.zero_eta, Fin.isValue, length_r] at hi_left
+                        rw [hs1, s0, sr_mul_r, length_sr] at hi_left
+                        split_ifs at hi_left with hkz
+                        · exact Int.lt_of_add_lt_add_left hkz
+                        · exfalso
+                          omega
+                      rw [ends_in_s0_sr]
+                      simp only [sr_mul_r, length_sr] at h_uz_not_reduced
+                      by_contra h
+                      push_neg at h
+                      split_ifs at h_uz_not_reduced with h_sum_pos
+                      · omega
+                      · push_neg at h_sum_pos
+                        omega
+                    | sr kz =>
+                      simp only [sr_mul_sr, length_r, length_sr] at h_uz_not_reduced
+                      simp only [ends_in_s0_sr]
+                      have h_kz_nonpos : (0 : ℤ) ≥ kz := by
+                        rw [cs.isLeftDescent_iff] at hi_left
+                        have hs0 : cs.simple 0 = s0 := rfl
+                        simp only [Fin.zero_eta, Fin.isValue, length_sr] at hi_left
+                        rw [hs0, s0, sr_mul_sr, sub_zero, length_r] at hi_left
+                        split_ifs at hi_left with hkz
+                        · omega
+                        · push_neg at hkz; exact hkz
+                      by_contra h
+                      push_neg at h
+                      split_ifs at h_uz_not_reduced with h_ku_pos h_kz_pos <;> omega
+
+                have h_z'_starts : starts_with_s1 z' := by
+                  rw [hz'_def]
+                  cases z with
+                  | r kz =>
+                    simp only [f, s0, Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero, sr_mul_r, zero_add]
+                    rw [cs.isLeftDescent_iff] at hi_left
+                    simp only [length_r] at hi_left
+                    have hs0 : cs.simple 0 = s0 := rfl
+                    simp only [Fin.zero_eta, Fin.isValue] at hi_left
+                    rw [hs0, s0, sr_mul_r, length_sr] at hi_left
+                    split_ifs at hi_left with h
+                    · rw [starts_with_s1_sr]
+                      omega
+                    · exfalso
+                      omega
+                  | sr kz =>
+                    simp only [f, s0, Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero, sr_mul_sr, sub_zero]
+                    rw [cs.isLeftDescent_iff] at hi_left
+                    simp only [length_sr] at hi_left
+                    have hs0 : cs.simple 0 = s0 := rfl
+                    simp only [Fin.zero_eta, Fin.isValue, gt_iff_lt] at hi_left
+                    rw [hs0, s0, sr_mul_sr, length_r] at hi_left
+                    split_ifs at hi_left with h
+                    · exfalso
+                      omega
+                    · rw [starts_with_s1_r]
+                      simp only [not_lt] at h
+                      apply lt_of_le_of_ne h
+                      by_contra hz0
+                      simp_rw [hz0] at hz'_def
+                      simp only [Fin.zero_eta, Fin.isValue] at hz'_def
+                      contradiction
+                exact length_add_of_ends_s0_starts_s1 u z' h_u_ends h_z'_starts
+              · have h_u_ends : ¬ends_in_s0 u := by
+                  cases u with
+                  | r ku =>
+                    cases z with
+                    | r kz =>
+                      simp only [r_mul_r, length_r] at h_uz_not_reduced
+                      simp only [ends_in_s0_r, not_lt]
+                      have h_kz_neg : (0 : ℤ) > kz := by
+                        rw [cs.isLeftDescent_iff] at hi_left
+                        have hs1 : cs.simple 1 = s1 := rfl
+                        simp only [Fin.mk_one, Fin.isValue, length_r] at hi_left
+                        rw [hs1, s1, sr_mul_r, length_sr] at hi_left
+                        split_ifs at hi_left with hkz
+                        · omega
+                        · push_neg at hkz; omega
+                      by_contra h_ku_neg
+                      push_neg at h_ku_neg
+                      have h_eq : (ku + kz).natAbs = ku.natAbs + kz.natAbs :=
+                        Int.natAbs_add_of_nonpos (le_of_lt h_ku_neg) (le_of_lt h_kz_neg)
+                      omega
+                    | sr kz =>
+                      simp only [r_mul_sr, length_r, length_sr] at h_uz_not_reduced
+                      simp only [ends_in_s0_r, not_lt]
+                      have h_kz_pos : (0 : ℤ) < kz := by
+                        rw [cs.isLeftDescent_iff] at hi_left
+                        have hs1 : cs.simple 1 = s1 := rfl
+                        simp only [Fin.mk_one, Fin.isValue, length_sr] at hi_left
+                        rw [hs1, s1, sr_mul_sr, length_r] at hi_left
+                        split_ifs at hi_left with hkz
+                        · exact hkz
+                        · omega
+                      by_contra h_ku_neg
+                      push_neg at h_ku_neg
+                      split_ifs at h_uz_not_reduced with h_diff_pos
+                      · omega
+                      · push_neg at h_diff_pos
+                        omega
+                  | sr ku =>
+                    cases z with
+                    | r kz =>
+                      simp only [sr_mul_r, length_sr, length_r] at h_uz_not_reduced
+                      simp only [ends_in_s0_sr, not_le]
+                      have h_kz_neg : (0 : ℤ) > kz := by
+                        rw [cs.isLeftDescent_iff] at hi_left
+                        have hs1 : cs.simple 1 = s1 := rfl
+                        simp only [Fin.mk_one, Fin.isValue, length_r] at hi_left
+                        rw [hs1, s1, sr_mul_r, length_sr] at hi_left
+                        split_ifs at hi_left with hkz
+                        · omega
+                        · push_neg at hkz; omega
+                      by_contra h_ku_neg
+                      push_neg at h_ku_neg
+                      have h_eq : (ku + kz).natAbs = ku.natAbs + kz.natAbs :=
+                        Int.natAbs_add_of_nonpos (h_ku_neg) (le_of_lt h_kz_neg)
+                      split_ifs at h_uz_not_reduced <;> omega
+                    | sr kz =>
+                      simp only [sr_mul_sr, length_sr, length_r] at h_uz_not_reduced
+                      simp only [ends_in_s0_sr, not_le]
+                      have h_kz_pos : (0 : ℤ) < kz := by
+                        rw [cs.isLeftDescent_iff] at hi_left
+                        have hs1 : cs.simple 1 = s1 := rfl
+                        simp only [Fin.mk_one, Fin.isValue, length_sr] at hi_left
+                        rw [hs1, s1, sr_mul_sr, length_r] at hi_left
+                        split_ifs at hi_left with hkz
+                        · exact hkz
+                        · omega
+                      by_contra h_ku_neg
+                      push_neg at h_ku_neg
+                      split_ifs at h_uz_not_reduced with h_diff_pos
+                      · omega
+                      · push_neg at h_diff_pos
+                        omega
+                have h_z'_starts : ¬starts_with_s1 z' := by
+                  rw [hz'_def]
+                  cases z with
+                  | r kz =>
+                    simp only [f, s1, Fin.mk_one, Fin.isValue, Matrix.cons_val_one,
+                      Matrix.cons_val_fin_one, sr_mul_r]
+                    rw [cs.isLeftDescent_iff] at hi_left
+                    have hs1 : cs.simple 1 = s1 := rfl
+                    simp only [Fin.mk_one, Fin.isValue, length_r] at hi_left
+                    rw [hs1, s1, sr_mul_r, length_sr] at hi_left
+                    split_ifs at hi_left with h
+                    · exfalso
+                      omega
+                    · intro h
+                      rw [starts_with_s1_sr] at h
+                      omega
+                  | sr kz =>
+                    simp only [f, s1, Fin.mk_one, Fin.isValue, Matrix.cons_val_one,
+                      Matrix.cons_val_fin_one, sr_mul_sr]
+                    rw [cs.isLeftDescent_iff] at hi_left
+                    have hs1 : cs.simple 1 = s1 := rfl
+                    simp only [Fin.mk_one, Fin.isValue, length_sr, gt_iff_lt] at hi_left
+                    rw [hs1, s1, sr_mul_sr, length_r] at hi_left
+                    split_ifs at hi_left with h
+                    · intro h
+                      rw [starts_with_s1_r] at h
+                      omega
+                    · exfalso
+                      omega
+                cases u with
+                | r ku =>
+                  cases hz'_eq : z' with
+                  | r kz' =>
+                    simp only [r_mul_r, length_r]
+                    simp only [ends_in_s0_r, not_lt] at h_u_ends
+                    have hz'_nonneg : (0 : ℤ) ≤ kz' := by
+                      by_contra h
+                      simp only [not_le] at h
+                      have hcontra : starts_with_s1 (r kz') := (starts_with_s1_r kz').mpr h
+                      erw [← hz'_eq] at hcontra
+                      contradiction
+                    rw [Int.natAbs_add_of_nonneg h_u_ends hz'_nonneg]
+                    ring
+                  | sr kz' =>
+                    simp only [r_mul_sr, length_r, length_sr]
+                    simp only [ends_in_s0_r, not_lt] at h_u_ends
+                    have hz'_nonpos : (0 : ℤ) ≥ kz' := by
+                      by_contra h
+                      simp only [not_le] at h
+                      have hcontra : starts_with_s1 (sr (kz' : ℤ)) := (starts_with_s1_sr (kz' : ℤ)).mpr h
+                      erw [← hz'_eq] at hcontra
+                      change starts_with_s1 z' at hcontra
+                      exact h_z'_starts hcontra
+                    split_ifs <;> omega
+                | sr ku =>
+                  cases hz'_eq : z' with
+                  | r kz' =>
+                    simp only [sr_mul_r, length_sr, length_r]
+                    simp only [ends_in_s0_sr, not_le] at h_u_ends
+                    have hz'_nonneg : (0 : ℤ) ≤ kz' := by
+                      by_contra h
+                      simp only [not_le] at h
+                      have hcontra : starts_with_s1 (r kz') := (starts_with_s1_r kz').mpr h
+                      rw [← hz'_eq] at hcontra
+                      exact h_z'_starts hcontra
+                    split_ifs <;> omega
+                  | sr kz' =>
+                    simp only [sr_mul_sr, length_sr, length_r]
+                    simp only [ends_in_s0_sr, not_le] at h_u_ends
+                    have hz'_nonpos : (0 : ℤ) ≥ kz' := by
+                      by_contra h
+                      simp only [ge_iff_le, not_le] at h
+                      have hcontra : starts_with_s1 (sr (kz' : ℤ)) := (starts_with_s1_sr (kz' : ℤ)).mpr h
+                      erw [← hz'_eq] at hcontra
+                      change starts_with_s1 z' at hcontra
+                      exact h_z'_starts hcontra
+                    simp only [ge_iff_le] at hz'_nonpos
+                    split_ifs <;> omega
+          refine ⟨?_, h_z'_len, h_prod⟩
+          simp only [Ad, one_mul, length_one, zero_add, true_and, Set.mem_setOf_eq]
+          exact h_z'_deg
+        obtain ⟨z', hz'_Ad, hz'_len, hz'_reduced⟩ := h_exists_z'
+        have h_uz'_le_v : ℓ (u * z') ≤ ℓ v := lemma_3_4_a_1 u d z' v hz'_Ad hv
+        have h_bound1 : ℓ u + ℓ z - 1 ≤ ℓ v := by
+          calc ℓ u + ℓ z - 1 = ℓ u + (ℓ z - 1) := by omega
+               _ = ℓ u + ℓ z' := by rw [hz'_len]
+               _ = ℓ (u * z') := hz'_reduced.symm
+               _ ≤ ℓ v := h_uz'_le_v
+        have h_bound2 : ℓ v ≤ ℓ z - ℓ u := Nat.le_sub_of_add_le' h_uv_le_z
+        have h_contra : 2 * ℓ u ≤ 1 := by
+          have : ℓ u + ℓ z - 1 ≤ ℓ z - ℓ u := le_trans h_bound1 h_bound2
+          omega
+        linarith
+      · rw [h_inv_len, ← hw_def] at h_sub
+        have : ℓ v = ℓ u + ℓ w := (Nat.sub_eq_iff_eq_add' h_u_le_v).mp (id (Eq.symm h_sub))
+        contradiction
+  · exact lemma_3_4_a_2 u d v hv
 
 -- Ad u d 中的元素必然在 Ad 1 d 中
 lemma Ad_u_in_Ad_one (u : Vertex) (d : Degree) (v : Vertex) (h : v ∈ Ad u d) : v ∈ Ad 1 d := by
