@@ -1310,8 +1310,8 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) (hv : v ∈ CurveNeighborhood u d)
                 · simp only [getDegree_sr]
                   exact le_refl _
               | sr k =>
-                simp only [f, s0, getDegree_sr, Degreele_le_def,Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero,
-                 sr_mul_sr, sub_zero, getDegree_r, le_refl, and_true]
+                simp only [f, s0, getDegree_sr, Degreele_le_def,Fin.zero_eta, Fin.isValue,
+                Matrix.cons_val_zero, sr_mul_sr, sub_zero, getDegree_r, le_refl, and_true]
                 have h_k_nonpos : (0 : ℤ) ≥ k:= by
                   rw [cs.isLeftDescent_iff] at hi_left
                   have hs0 : cs.simple 0 = s0 := rfl
@@ -1336,7 +1336,8 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) (hv : v ∈ CurveNeighborhood u d)
                   omega
               | sr k =>
                 simp only [f, s1, getDegree_sr, Degreele_le_def, Fin.mk_one, Fin.isValue,
-                Matrix.cons_val_one, Matrix.cons_val_fin_one, sr_mul_sr, getDegree_r, le_refl, true_and]
+                Matrix.cons_val_one, Matrix.cons_val_fin_one, sr_mul_sr, getDegree_r,
+                le_refl, true_and]
                 have h_k_pos : (0 : ℤ) < k := by
                   rw [cs.isLeftDescent_iff] at hi_left
                   have hs1 : cs.simple 1 = s1 := rfl
@@ -1420,12 +1421,12 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) (hv : v ∈ CurveNeighborhood u d)
                       by_contra h
                       push_neg at h
                       split_ifs at h_uz_not_reduced with h_ku_pos h_kz_pos <;> omega
-
                 have h_z'_starts : starts_with_s1 z' := by
                   rw [hz'_def]
                   cases z with
                   | r kz =>
-                    simp only [f, s0, Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero, sr_mul_r, zero_add]
+                    simp only [f, s0, Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero,
+                    sr_mul_r, zero_add]
                     rw [cs.isLeftDescent_iff] at hi_left
                     simp only [length_r] at hi_left
                     have hs0 : cs.simple 0 = s0 := rfl
@@ -1437,7 +1438,8 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) (hv : v ∈ CurveNeighborhood u d)
                     · exfalso
                       omega
                   | sr kz =>
-                    simp only [f, s0, Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero, sr_mul_sr, sub_zero]
+                    simp only [f, s0, Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero,
+                    sr_mul_sr, sub_zero]
                     rw [cs.isLeftDescent_iff] at hi_left
                     simp only [length_sr] at hi_left
                     have hs0 : cs.simple 0 = s0 := rfl
@@ -1575,7 +1577,8 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) (hv : v ∈ CurveNeighborhood u d)
                     have hz'_nonpos : (0 : ℤ) ≥ kz' := by
                       by_contra h
                       simp only [not_le] at h
-                      have hcontra : starts_with_s1 (sr (kz' : ℤ)) := (starts_with_s1_sr (kz' : ℤ)).mpr h
+                      have hcontra : starts_with_s1 (sr (kz' : ℤ)) :=
+                          (starts_with_s1_sr (kz' : ℤ)).mpr h
                       erw [← hz'_eq] at hcontra
                       change starts_with_s1 z' at hcontra
                       exact h_z'_starts hcontra
@@ -1598,7 +1601,8 @@ theorem lemma_3_5 (u v : Vertex) (d : Degree) (hv : v ∈ CurveNeighborhood u d)
                     have hz'_nonpos : (0 : ℤ) ≥ kz' := by
                       by_contra h
                       simp only [ge_iff_le, not_le] at h
-                      have hcontra : starts_with_s1 (sr (kz' : ℤ)) := (starts_with_s1_sr (kz' : ℤ)).mpr h
+                      have hcontra : starts_with_s1 (sr (kz' : ℤ))
+                          := (starts_with_s1_sr (kz' : ℤ)).mpr h
                       erw [← hz'_eq] at hcontra
                       change starts_with_s1 z' at hcontra
                       exact h_z'_starts hcontra
@@ -1675,8 +1679,14 @@ def firstGen (g : D∞) : Option (Fin 2) := (reducedWord g).head?
 lemma mul_le_mul_left_of_length_add (u : Vertex) (x y : Vertex)
     (hx : ℓ (u * x) = ℓ u + ℓ x) (hy : ℓ (u * y) = ℓ u + ℓ y) :
     x ≤ y ↔ u * x ≤ u * y := by
-  simp [length_eq, ] at hx
-  sorry
+  rw [le_iff_lt_or_eq, le_iff_lt_or_eq, lemma_2_3, lemma_2_3, hx, hy]
+  constructor
+  · rintro (h | rfl)
+    · left; omega
+    · right; rfl
+  · rintro (h | h)
+    · left; omega
+    · right; exact mul_left_cancel h
 
 lemma Lt_iff_le_and_ne (a b : Vertex) : Lt a b ↔ a ≤ b ∧ a ≠ b := by
   rw [Lt, le_iff_lt_or_eq]
@@ -1700,8 +1710,9 @@ lemma exists_max_ge_in_Reachable (u : Vertex) (d : Degree) (v : Vertex)
   have h_bound_finite : S_bound.Finite := by
     let pre_image := { y : Vertex | φ y ≤ d }
     have h_pre_finite : pre_image.Finite := by
-
-      sorry
+      have heq : pre_image = Ad 1 d := (lemma_3_hl d).symm
+      rw [heq]
+      exact h_finite
     have : S_bound = (fun y => u * y) '' pre_image := by
        ext x; simp [S_bound, pre_image]
     rw [this]
